@@ -25,6 +25,11 @@ class DbSettings(BaseModel):
         return f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
 
 
+class FaceitSettings(BaseModel):
+    api_key: str = "placeholder"
+    base_url: str = "https://open.faceit.com/data/v4"
+
+
 class Settings(BaseSettings):
     """
     Основной класс настроек приложения. Наследуется от BaseSettings,
@@ -41,6 +46,8 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
 
     db: DbSettings = DbSettings()
+
+    faceit: FaceitSettings = FaceitSettings()
 
 
 settings = Settings()
