@@ -9,6 +9,7 @@ BASE_DIR = Path(__file__).parent.parent  # Определяем путь к ко
 class ApiV1Prefix(BaseModel):
     """Настройки префикса для первой версии API."""
     prefix: str = "/v1"
+    players: str = "/players"
 
 
 class ApiPrefix(BaseModel):
