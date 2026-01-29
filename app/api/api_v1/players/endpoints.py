@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from .dependencies import get_current_faceit_player
 
 from .services.faceit_client import FaceitClient
-from .schemas import PlayerDetails
+from .schemas import PlayerProfileDetails, PlayerCSStats
 from core.config import settings
 
 
@@ -11,15 +13,13 @@ router = APIRouter(
 )
 
 
-@router.get("/{nickname}", response_model=PlayerDetails)
-async def get_player_profile(nickname: str):
-    """Получает информацию об игроке из Faceit."""
-    player_details = await FaceitClient().get_player_details(nickname=nickname)
+@router.get("/profile/{nickname}", response_model=PlayerProfileDetails)
+async def get_player_profile(player: dict = Depends(get_current_faceit_player)):
+    """Получает информацию об профиле игрока на Faceit."""
+    return player
 
-    if not player_details:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Player not found on Faceit",
-        )
 
-    return player_details
+@router.get("/CSStats/{nickname}", response_model=PlayerCSStats)
+async def get_cs_stats(player: dict = Depends(get_current_faceit_player)):
+    """Получает CS статистику игрока на Faceit."""
+    return player
