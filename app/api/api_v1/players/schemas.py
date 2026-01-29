@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from pydantic import BaseModel, model_validator
 
@@ -18,7 +18,12 @@ class PlayerProfileDetails(BaseModel):
     @classmethod
     def prepare_profile(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            data["friends_count"] = len(data["friends_ids"])
+            data["friends_count"] = len(data.get("friends_ids"))
+
+            # Конвертирует строку в datetime и принудительно ставит UTC
+            raw_date = data.get("activated_at")
+            dt = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
+            data["activated_at"] = dt.astimezone(timezone.utc)
 
             # Формирует рабочую ссылку, заменяя плейсхолдер на русский язык
             url: str = data.get("faceit_url", "")
