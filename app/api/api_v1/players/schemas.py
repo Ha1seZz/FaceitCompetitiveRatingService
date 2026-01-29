@@ -22,7 +22,7 @@ class PlayerCSStats(BaseModel):
     skill_level: int
     faceit_elo: int
     game_player_name: str
-    game_player_id: str
+    game_player_id: int
 
     @model_validator(mode="before")
     @classmethod
