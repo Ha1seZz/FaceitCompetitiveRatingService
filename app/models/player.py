@@ -7,6 +7,7 @@ from app.core.settings.base import Base
 
 
 class Player(Base):
+    # Faceit профиль
     nickname: Mapped[str] = mapped_column(unique=True, nullable=False)
     country: Mapped[str] = mapped_column(nullable=True)
     verified: Mapped[bool] = mapped_column(server_default=text("false"))
