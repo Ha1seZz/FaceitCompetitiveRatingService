@@ -4,7 +4,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .mixins.id_int_pk import IdIntPkMixin
-from core.settings.base import Base
+from app.core.settings.base import Base
 
 
 class Player(IdIntPkMixin, Base):
