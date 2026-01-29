@@ -43,3 +43,7 @@ class PlayerCSStats(BaseModel):
             data["faceit_elo"] = cs_info.get("faceit_elo", 0)
 
         return data
+
+
+class PlayerCreate(PlayerProfileDetails, PlayerCSStats):
+    pass
