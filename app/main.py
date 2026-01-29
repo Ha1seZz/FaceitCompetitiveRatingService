@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import httpx
 import uvicorn
-from api import router as api_router  # Импорт основного роутера API v1
+from app.api import router as api_router  # Импорт основного роутера API v1
 
 
 app = FastAPI(title="Faceit Competitive Rating Service")
@@ -18,4 +18,4 @@ async def httpx_status_error_handler(request: Request, exc: httpx.HTTPStatusErro
 
 
 if __name__ == "__main__":  # Точка входа для запуска приложения
-    uvicorn.run("main:app", reload=True)
+    uvicorn.run("app.main:app", reload=True)

@@ -4,7 +4,7 @@ from fastapi import (
 )
 from fastapi.security import HTTPBearer
 
-from core.config import settings
+from app.core.config import settings
 
 from .players.endpoints import router as players_router
 

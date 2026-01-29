@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from crud import create_or_update_player
-from core.settings.db_helper import db_helper
+from .crud import create_or_update_player
+from app.core.settings.db_helper import db_helper
 from .dependencies import get_current_faceit_player
 from .services.faceit_client import FaceitClient
 from .schemas import PlayerCreate, PlayerProfileDetails, PlayerCSStats
-from core.config import settings
+from app.core.config import settings
 
 
 router = APIRouter(
