@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, text
+from sqlalchemy import BigInteger, DateTime, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.settings.base import Base
@@ -15,7 +15,7 @@ class Player(Base):
     faceit_url: Mapped[str] = mapped_column(nullable=False)
     player_id: Mapped[str] = mapped_column(primary_key=True)
     friends_count: Mapped[int] = mapped_column(server_default=text("0"))
-    activated_at: Mapped[datetime] = mapped_column(nullable=False)
+    activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     # Статистика CS
     region: Mapped[str] = mapped_column(nullable=False)
