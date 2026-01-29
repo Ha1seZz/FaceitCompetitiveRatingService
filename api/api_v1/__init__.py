@@ -6,7 +6,7 @@ from fastapi.security import HTTPBearer
 
 from core.config import settings
 
-from .players import router as players_router
+from .players.endpoints import router as players_router
 
 
 http_bearer = HTTPBearer(auto_error=False)
