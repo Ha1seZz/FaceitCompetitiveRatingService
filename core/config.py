@@ -6,10 +6,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BASE_DIR = Path(__file__).parent.parent  # Определяем путь к корневой директории проекта
 
 
+class ApiV1Prefix(BaseModel):
+    """Настройки префикса для первой версии API."""
+    prefix: str = "/v1"
+
+
+class ApiPrefix(BaseModel):
+    """Общая структура путей API."""
+    prefix: str = "/api"
+    v1: ApiV1Prefix = ApiV1Prefix()
+
+
 class DbSettings(BaseModel):
-    """
-    Схема настроек базы данных.
-    """
+    """Схема настроек базы данных."""
     host: str = "localhost"
     port: int = 5432
     user: str = "postgres"
@@ -18,10 +27,8 @@ class DbSettings(BaseModel):
     echo: bool = False
 
     @property
-    def database_url(self) -> str:
-        """
-        Собирает DSN строку для SQLAlchemy (asyncpg).
-        """
+    def url(self) -> str:
+        """Собирает DSN строку для SQLAlchemy (asyncpg)."""
         return f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
 
 
@@ -43,7 +50,7 @@ class Settings(BaseSettings):
         env_nested_delimiter="__"
     )
 
-    api_v1_prefix: str = "/api/v1"
+    api: ApiPrefix = ApiPrefix()
 
     db: DbSettings = DbSettings()
 
