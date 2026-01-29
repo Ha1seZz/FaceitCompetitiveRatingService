@@ -15,8 +15,9 @@ class DatabaseHelper:
     Класс-помощник для управления подключением к БД и сессиями.
     Инкапсулирует создание движка (engine) и фабрики сессий.
     """
+
     def __init__(self, url: str, echo: bool = False):
-        self.engine = create_async_engine(url=url, echo=echo)  # Создаем асинхронный движок
+        self.engine = create_async_engine(url=url, echo=echo)  # Асинхронный движок
         self.session_factory = async_sessionmaker(  # Фабрика сессий
             bind=self.engine,
             autoflush=False,
@@ -25,9 +26,7 @@ class DatabaseHelper:
         )
 
     def get_scoped_session(self):
-        """
-        Создает сессию, ограниченную текущей задачей asyncio (current_task).
-        """
+        """Создает сессию, ограниченную текущей задачей asyncio (current_task)."""
         session = async_scoped_session(
             session_factory=self.session_factory,
             scopefunc=current_task,
@@ -35,17 +34,13 @@ class DatabaseHelper:
         return session
 
     async def session_dependency(self) -> AsyncSession:  # type: ignore
-        """
-        Генератор сессий для FastAPI Depends.
-        """
+        """Генератор сессий для FastAPI Depends."""
         async with self.session_factory() as session:
             yield session
             await session.close()
 
     async def scoped_session_dependency(self) -> AsyncSession:  # type: ignore
-        """
-        Альтернативный генератор для использования scoped сессий.
-        """
+        """Альтернативный генератор для использования scoped сессий."""
         session = self.get_scoped_session()
         yield session
         await session.remove()
