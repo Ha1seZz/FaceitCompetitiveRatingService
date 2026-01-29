@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-BASE_DIR = Path(__file__).parent.parent  # Определяем путь к корневой директории проекта
+BASE_DIR = Path(__file__).parent.parent.parent  # Определяем путь к корневой директории проекта
 
 
 class ApiV1Prefix(BaseModel):
