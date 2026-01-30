@@ -9,6 +9,7 @@ from app.core.settings.base import Base
 
 class Match(Base):
     __tablename__ = "matches"
+
     match_id: Mapped[str] = mapped_column(primary_key=True)
     region: Mapped[str] = mapped_column(nullable=False)
     status: Mapped[str] = mapped_column(nullable=False)
