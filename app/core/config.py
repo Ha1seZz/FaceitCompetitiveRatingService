@@ -10,6 +10,7 @@ class ApiV1Prefix(BaseModel):
     """Настройки префикса для первой версии API."""
     prefix: str = "/v1"
     players: str = "/players"
+    matches: str = "/matches"
 
 
 class ApiPrefix(BaseModel):
