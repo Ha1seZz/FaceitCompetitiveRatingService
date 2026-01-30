@@ -7,6 +7,7 @@ from app.core.settings.base import Base
 
 
 class Player(Base):
+    """Модель игрока Faceit."""
     # Faceit профиль
     nickname: Mapped[str] = mapped_column(unique=True, nullable=False)
     country: Mapped[str] = mapped_column(nullable=True)
