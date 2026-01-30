@@ -11,12 +11,12 @@ class Player(Base):
     # Faceit профиль
     nickname: Mapped[str] = mapped_column(unique=True, nullable=False)
     country: Mapped[str] = mapped_column(nullable=True)
-    verified: Mapped[bool] = mapped_column(server_default=text("false"))
+    verified: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     steam_nickname: Mapped[str] = mapped_column(nullable=True)
     steam_id_64: Mapped[int] = mapped_column(BigInteger, nullable=False)
     faceit_url: Mapped[str] = mapped_column(nullable=False)
     player_id: Mapped[str] = mapped_column(primary_key=True)
-    friends_count: Mapped[int] = mapped_column(server_default=text("0"))
+    friends_count: Mapped[int] = mapped_column(default=0, server_default=text("0"))
     activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     # Статистика CS

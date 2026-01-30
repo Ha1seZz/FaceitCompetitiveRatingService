@@ -1,13 +1,14 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, JSON
+from sqlalchemy import DateTime, JSON, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.settings.base import Base
 
 
 class Match(Base):
+    __tablename__ = "matches"
     match_id: Mapped[str] = mapped_column(primary_key=True)
     region: Mapped[str] = mapped_column(nullable=False)
     status: Mapped[str] = mapped_column(nullable=False)
@@ -36,5 +37,5 @@ class Match(Base):
 
     # Дополнительные данные
     best_of: Mapped[int] = mapped_column(nullable=False)
-    calculate_elo: Mapped[bool] = mapped_column(server_default=True)
+    calculate_elo: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
     faceit_url: Mapped[str] = mapped_column(nullable=False)
