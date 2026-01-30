@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from .services.faceit_client import FaceitClient
 
+
 async def get_current_faceit_player(nickname: str) -> dict:
     player_data = await FaceitClient().get_player_details(nickname=nickname)
     if not player_data:
