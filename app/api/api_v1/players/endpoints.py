@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .crud import create_or_update_player
+from .repository import create_or_update_player
 from app.core.settings.db_helper import db_helper
 from .dependencies import get_current_faceit_player
 from .schemas import PlayerProfileDetails, PlayerCSStats
@@ -17,7 +17,7 @@ router = APIRouter(
 @router.get("/profile/{nickname}", response_model=PlayerProfileDetails)
 async def get_player_profile(
     player: dict = Depends(get_current_faceit_player),
-    session: AsyncSession = Depends(db_helper.scoped_session_dependency),
+    session: AsyncSession = Depends(db_helper.session_dependency),
 ):
     """Получает данные об игроке из Faceit и синхронизирует игрока в БД."""
     await create_or_update_player(session=session, player_in=player)
