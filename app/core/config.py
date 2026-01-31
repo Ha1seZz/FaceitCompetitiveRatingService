@@ -37,6 +37,7 @@ class DbSettings(BaseModel):
 class FaceitSettings(BaseModel):
     api_key: str = "placeholder"
     base_url: str = "https://open.faceit.com/data/v4"
+    default_language: str = "ru"
 
 
 class Settings(BaseSettings):

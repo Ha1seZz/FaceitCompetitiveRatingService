@@ -2,6 +2,8 @@ from datetime import datetime, timezone
 from typing import Any
 from pydantic import BaseModel, model_validator
 
+from app.core.config import settings
+
 
 class MatchDetails(BaseModel):
     match_id: str
@@ -67,7 +69,7 @@ class MatchDetails(BaseModel):
 
             # Формирует рабочую ссылку, заменяя плейсхолдер на русский язык
             url: str = data.get("faceit_url", "")
-            data["faceit_url"] = url.replace("{lang}", "ru")
+            data["faceit_url"] = url.replace("{lang}", settings.faceit.default_language)
 
         return data
 
