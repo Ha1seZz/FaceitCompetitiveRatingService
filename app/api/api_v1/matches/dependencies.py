@@ -1,3 +1,5 @@
+"""Зависимости модуля матчей."""
+
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +15,7 @@ from .services.match_service import MatchService
 async def get_match_repository(
     session: AsyncSession = Depends(db_helper.session_dependency),
 ) -> MatchRepository:
-    """Dependency для создания MatchRepository."""
+    """Создает экземпляр репозитория матчей."""
     return MatchRepository(session=session)
 
 
@@ -21,7 +23,7 @@ async def get_match_service(
     session: AsyncSession = Depends(db_helper.session_dependency),
     repository: MatchRepository = Depends(get_match_repository),
 ) -> MatchService:
-    """Dependency для создания MatchService."""
+    """Создает экземпляр сервиса обработки логики матчей."""
     return MatchService(session=session, repository=repository)
 
 
@@ -29,7 +31,7 @@ async def get_current_match_details(
     match_id: str,
     faceit_client: FaceitClient = Depends(get_faceit_client),
 ) -> dict:
-    """Получает данные матча из Faceit API."""
+    """Запрашивает данные матча напрямую из Faceit API и обрабатывает ошибки."""
     try:
         match_data = await faceit_client.get_match(match_id=match_id)
     except FaceitEntityNotFound as e:
@@ -43,7 +45,7 @@ async def get_current_match_details(
             detail=str(e),
         )
 
-    # Проверка статуса матча
+    # Валидация жизненного цикла матча
     if match_data["status"] != "FINISHED":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

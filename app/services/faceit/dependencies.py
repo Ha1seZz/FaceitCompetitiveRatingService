@@ -1,3 +1,5 @@
+"""Зависимости для обеспечения доступа к Faceit API."""
+
 from fastapi import Depends
 import httpx
 

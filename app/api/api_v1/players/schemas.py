@@ -1,3 +1,5 @@
+"""Схемы Pydantic для сущности 'Игрок'."""
+
 from datetime import datetime, timezone
 from typing import Any
 from pydantic import BaseModel, model_validator
@@ -6,6 +8,8 @@ from app.core.config import settings
 
 
 class PlayerProfileDetails(BaseModel):
+    """Схема основных данных профиля игрока."""
+
     nickname: str
     country: str
     verified: bool
@@ -19,21 +23,24 @@ class PlayerProfileDetails(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def prepare_profile(cls, data: Any) -> Any:
+        """Трансформирует сырой JSON профиля перед валидацией."""
         if isinstance(data, dict):
-            data["friends_count"] = len(data.get("friends_ids"))
+            data["friends_count"] = len(data.get("friends_ids"))  # Подсчет друзей
 
-            # Конвертирует строку в datetime и принудительно ставит UTC
+            # Конвертация строки в datetime с принудительным UTC
             raw_date = data.get("activated_at")
             dt = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
             data["activated_at"] = dt.astimezone(timezone.utc)
 
-            # Формирует рабочую ссылку, заменяя плейсхолдер на русский язык
+            # Формирование локализованной ссылки
             url: str = data.get("faceit_url", "")
             data["faceit_url"] = url.replace("{lang}", settings.faceit.default_language)
         return data
 
 
 class PlayerCSStats(BaseModel):
+    """Схема игровой статистики Counter-Strike."""
+
     region: str
     skill_level: int
     faceit_elo: int
@@ -41,6 +48,7 @@ class PlayerCSStats(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def extract_cs_stats(cls, data: Any) -> Any:
+        """Извлекает специфичные для CS данные из общего словаря игр Faceit."""
         if isinstance(data, dict):
             games: dict = data.get("games", {})
             cs_info = games.get("cs2") or games.get("csgo") or {}
@@ -53,4 +61,6 @@ class PlayerCSStats(BaseModel):
 
 
 class PlayerCreate(PlayerProfileDetails, PlayerCSStats):
+    """Объединенная схема для создания или обновления игрока в базе данных."""
+
     pass

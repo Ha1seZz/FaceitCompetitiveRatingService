@@ -1,3 +1,5 @@
+"""Эндпоинты для управления данными матчей."""
+
 from fastapi import APIRouter, Depends
 
 from .services.match_service import MatchService
@@ -17,6 +19,6 @@ async def get_match_details(
     match_data: dict = Depends(get_current_match_details),
     match_service: MatchService = Depends(get_match_service),
 ):
-    """Получает данные о матче из Faceit и синхронизирует матч в БД."""
+    """Получить детали матча и синхронизировать их с локальной базой данных."""
     match = await match_service.create_or_update_from_faceit(match_data)
     return match

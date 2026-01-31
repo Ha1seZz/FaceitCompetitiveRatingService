@@ -1,3 +1,5 @@
+"""Зависимости модуля игроков."""
+
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +15,7 @@ from .services.player_service import PlayerService
 async def get_player_repository(
     session: AsyncSession = Depends(db_helper.session_dependency),
 ) -> PlayerRepository:
-    """Dependency для создания PlayerRepository."""
+    """Создает экземпляр репозитория игроков."""
     return PlayerRepository(session=session)
 
 
@@ -21,7 +23,7 @@ async def get_player_service(
     session: AsyncSession = Depends(db_helper.session_dependency),
     repository: PlayerRepository = Depends(get_player_repository),
 ) -> PlayerService:
-    """Dependency для создания PlayerService."""
+    """Создает экземпляр сервиса обработки логики игроков."""
     return PlayerService(session=session, repository=repository)
 
 
@@ -29,7 +31,7 @@ async def get_current_faceit_player(
     nickname: str,
     faceit_client: FaceitClient = Depends(get_faceit_client),
 ) -> dict:
-    """Получает данные игрока из Faceit API."""
+    """Запрашивает данные игрока напрямую из Faceit API и обрабатывает ошибки."""
     try:
         return await faceit_client.get_player(nickname=nickname)
     except FaceitEntityNotFound as e:
