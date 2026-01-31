@@ -22,3 +22,13 @@ async def get_match_details(
     """Получить детали матча и синхронизировать их с локальной базой данных."""
     match = await match_service.create_or_update_from_faceit(match_data)
     return match
+
+
+@router.get("/region/{region}", response_model=list[MatchDetails])
+async def get_matches_by_region(
+    region: str,
+    match_service: MatchService = Depends(get_match_service),
+):
+    """Получить список всех завершенных матчей в указанном регионе."""
+    matches = await match_service.get_finished_matches_by_region(region)
+    return matches
