@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from .services.faceit_client import FaceitClient
+from app.services.faceit.client import FaceitClient
 
 
 async def get_current_faceit_player(nickname: str) -> dict:
