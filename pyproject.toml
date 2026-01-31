@@ -1,7 +1,7 @@
 [project]
 name = "faceitcompetitiveratingservice"
 version = "0.1.0"
-description = ""
+description = "Asynchronous FastAPI service for Faceit data orchestration with automated player profiling and match synchronization."
 authors = [
     {name = "Ha1seZz",email = "fahretdinovdamir7@gmail.com"}
 ]
