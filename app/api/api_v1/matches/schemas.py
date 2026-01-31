@@ -43,7 +43,7 @@ class MatchDetails(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def prepare_profile(cls, data: Any) -> Any:
+    def prepare_match_data(cls, data: Any) -> Any:
         """Комплексный трансформатор сырых данных матча."""
         if isinstance(data, dict):
             # Конвертация строк в datetime с принудительным UTC
