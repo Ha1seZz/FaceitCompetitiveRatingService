@@ -1,8 +1,28 @@
 from fastapi import Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.faceit.dependencies import get_faceit_client
 from app.services.faceit.client import FaceitClient
+from app.services.faceit.dependencies import get_faceit_client
 from app.core.exceptions import FaceitEntityNotFound, ExternalServiceUnavailable
+from app.core.settings import db_helper
+
+from .repository import PlayerRepository
+from .services.player_service import PlayerService
+
+
+async def get_player_repository(
+    session: AsyncSession = Depends(db_helper.session_dependency),
+) -> PlayerRepository:
+    """Dependency для создания PlayerRepository."""
+    return PlayerRepository(session=session)
+
+
+async def get_player_service(
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    repository: PlayerRepository = Depends(get_player_repository),
+) -> PlayerService:
+    """Dependency для создания PlayerService."""
+    return PlayerService(session=session, repository=repository)
 
 
 async def get_current_faceit_player(

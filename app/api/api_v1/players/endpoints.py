@@ -1,9 +1,7 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from .repository import create_or_update_player
-from app.core.settings.db_helper import db_helper
-from .dependencies import get_current_faceit_player
+from .services.player_service import PlayerService
+from .dependencies import get_current_faceit_player, get_player_service
 from .schemas import PlayerProfileDetails, PlayerCSStats
 from app.core.config import settings
 
@@ -16,11 +14,11 @@ router = APIRouter(
 
 @router.get("/profile/{nickname}", response_model=PlayerProfileDetails)
 async def get_player_profile(
-    player: dict = Depends(get_current_faceit_player),
-    session: AsyncSession = Depends(db_helper.session_dependency),
+    player_data: dict = Depends(get_current_faceit_player),
+    player_service: PlayerService = Depends(get_player_service),
 ):
     """Получает данные об игроке из Faceit и синхронизирует игрока в БД."""
-    await create_or_update_player(session=session, player_in=player)
+    player = await player_service.create_or_update_from_faceit(player_data)
     return player
 
 
