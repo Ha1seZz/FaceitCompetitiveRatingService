@@ -8,7 +8,7 @@ class FaceitClient:
         self.base_url = settings.faceit.base_url
         self.headers = {"Authorization": f"Bearer {settings.faceit.api_key}"}
 
-    async def get_player_details(self, nickname: str):
+    async def get_player(self, nickname: str):
         async with httpx.AsyncClient(
             base_url=self.base_url,
             headers=self.headers,
@@ -21,7 +21,7 @@ class FaceitClient:
             response.raise_for_status()
             return response.json()
 
-    async def get_match_details(self, match_id: str):
+    async def get_match(self, match_id: str):
         async with httpx.AsyncClient(
             base_url=self.base_url,
             headers=self.headers,
