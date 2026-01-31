@@ -3,7 +3,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.api_v1.matches.schemas import MatchCreate
-from repository import MatchRepository
+from app.api.api_v1.matches.repository import MatchRepository
 from app.core.models import Match
 
 

@@ -3,7 +3,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.api_v1.players.schemas import PlayerCreate
-from repository import PlayerRepository
+from app.api.api_v1.players.repository import PlayerRepository
 from app.core.models import Player
 
 
