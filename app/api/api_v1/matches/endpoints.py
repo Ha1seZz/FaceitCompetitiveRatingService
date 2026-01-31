@@ -12,7 +12,7 @@ router = APIRouter(
 )
 
 
-@router.get("/matches/{match_id}", response_model=MatchDetails)
+@router.get("/{match_id}", response_model=MatchDetails)
 async def get_match_details(
     match_data: dict = Depends(get_current_match_details),
     match_service: MatchService = Depends(get_match_service),
