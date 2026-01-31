@@ -1,35 +1,39 @@
 import httpx
 
-from app.core.config import settings
+from app.core.exceptions import ExternalServiceUnavailable, FaceitEntityNotFound
 
 
 class FaceitClient:
-    def __init__(self):
-        self.base_url = settings.faceit.base_url
-        self.headers = {"Authorization": f"Bearer {settings.faceit.api_key}"}
+    """Клиент для работы с Faceit API."""
 
-    async def get_player(self, nickname: str):
-        async with httpx.AsyncClient(
-            base_url=self.base_url,
-            headers=self.headers,
-        ) as client:
-            response = await client.get("/players", params={"nickname": nickname})
+    def __init__(self, client: httpx.AsyncClient):
+        self.client = client
 
-            if response.status_code == 404:  # Player not found
-                return None
+    async def get_player(self, nickname: str) -> dict:
+        """Получает данные игрока по никнейму."""
+        response = await self.client.get(
+            "/players",
+            params={"nickname": nickname},
+        )
+        
+        if response.status_code == 404:
+            raise FaceitEntityNotFound("Player not found on Faceit")
+        
+        if response.status_code >= 500:
+            raise ExternalServiceUnavailable("Faceit API unavailable")
+        
+        response.raise_for_status()
+        return response.json()
 
-            response.raise_for_status()
-            return response.json()
-
-    async def get_match(self, match_id: str):
-        async with httpx.AsyncClient(
-            base_url=self.base_url,
-            headers=self.headers,
-        ) as client:
-            response = await client.get(f"/matches/{match_id}")
-
-            if response.status_code == 404:  # Match not found
-                return None
-
-            response.raise_for_status()
-            return response.json()
+    async def get_match(self, match_id: str) -> dict:
+        """Получает данные матча по ID."""
+        response = await self.client.get(f"/matches/{match_id}")
+        
+        if response.status_code == 404:
+            raise FaceitEntityNotFound("Match not found on Faceit")
+        
+        if response.status_code >= 500:
+            raise ExternalServiceUnavailable("Faceit API unavailable")
+        
+        response.raise_for_status()
+        return response.json()
