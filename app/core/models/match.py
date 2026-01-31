@@ -11,20 +11,20 @@ class Match(Base):
     __tablename__ = "matches"
 
     match_id: Mapped[str] = mapped_column(primary_key=True)
-    region: Mapped[str] = mapped_column(nullable=False)
-    status: Mapped[str] = mapped_column(nullable=False)
+    region: Mapped[str] = mapped_column(nullable=False, index=True)
+    status: Mapped[str] = mapped_column(nullable=False, index=True)
 
     # Информация о соревновании
-    competition_id: Mapped[str] = mapped_column(nullable=False)
-    competition_type: Mapped[str] = mapped_column(nullable=False)
+    competition_id: Mapped[str] = mapped_column(nullable=False, index=True)
+    competition_type: Mapped[str] = mapped_column(nullable=False, index=True)
     competition_name: Mapped[str] = mapped_column(nullable=False)
-    organizer_id: Mapped[str] = mapped_column(nullable=False)
+    organizer_id: Mapped[str] = mapped_column(nullable=False, index=True)
 
     # Команды
     teams: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
 
     # Голосование
-    map: Mapped[str] = mapped_column(nullable=False)
+    map: Mapped[str] = mapped_column(nullable=False, index=True)
     location: Mapped[str] = mapped_column(nullable=False)
 
     # Результат
@@ -33,10 +33,10 @@ class Match(Base):
 
     # Временные метки
     configured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
 
     # Дополнительные данные
     best_of: Mapped[int] = mapped_column(nullable=False)
-    calculate_elo: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
+    calculate_elo: Mapped[bool] = mapped_column(default=True, server_default=text("true"), index=True)
     faceit_url: Mapped[str] = mapped_column(nullable=False)
