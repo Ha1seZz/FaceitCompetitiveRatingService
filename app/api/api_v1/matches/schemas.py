@@ -24,7 +24,7 @@ class MatchDetails(BaseModel):
     teams: dict[str, Any]
 
     # Данные голосования
-    map: str
+    maps: list[str]
     location: str
 
     # Результат игры
