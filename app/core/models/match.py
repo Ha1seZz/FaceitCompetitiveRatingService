@@ -7,7 +7,6 @@ from sqlalchemy import ARRAY, DateTime, JSON, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.settings.base import Base
-from app.core.models.team import Team
 
 if TYPE_CHECKING:
     from app.core.models.team import Team
@@ -16,36 +15,32 @@ if TYPE_CHECKING:
 class Match(Base):
     __tablename__ = "matches"
 
-    # Основные идентификаторы
     match_id: Mapped[str] = mapped_column(primary_key=True)
     region: Mapped[str] = mapped_column(nullable=False, index=True)
     status: Mapped[str] = mapped_column(nullable=False, index=True)
 
-    # Информация о соревновании (турнир, лига или хаб)
     competition_id: Mapped[str] = mapped_column(nullable=False, index=True)
     competition_type: Mapped[str] = mapped_column(nullable=False, index=True)
     competition_name: Mapped[str] = mapped_column(nullable=False)
     organizer_id: Mapped[str] = mapped_column(nullable=False, index=True)
 
-    # Данные о командах
     teams: Mapped[list["Team"]] = relationship(
-        "Team", back_populates="match", cascade="all, delete-orphan"
+        "Team",
+        back_populates="match",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
-    # Итоги голосования капитанов
     maps: Mapped[list[str]] = mapped_column(
         ARRAY(String),
         nullable=False,
         server_default="{}",
-        index=True,
     )
     location: Mapped[str] = mapped_column(nullable=False)
 
-    # Итоговый результат
     winner: Mapped[str] = mapped_column(nullable=False)
     score: Mapped[dict[str, int]] = mapped_column(JSON, nullable=False)
 
-    # Временные метки в формате UTC с поддержкой часовых поясов
     configured_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -61,7 +56,6 @@ class Match(Base):
         index=True,
     )
 
-    # Параметры матча и внешние ссылки
     best_of: Mapped[int] = mapped_column(nullable=False)
     calculate_elo: Mapped[bool] = mapped_column(
         default=True,

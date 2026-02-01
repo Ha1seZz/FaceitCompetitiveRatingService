@@ -2,9 +2,20 @@
 
 from datetime import datetime, timezone
 from typing import Any
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from app.core.config import settings
+
+
+class MatchPlayerSchema(BaseModel):
+    """Схема данных игрока в конкретном матче."""
+
+    player_id: str
+    nickname: str
+    membership: str
+    game_player_id: int
+    game_player_name: str
+    game_skill_level: int = 0
 
 
 class TeamSchema(BaseModel):
@@ -12,10 +23,14 @@ class TeamSchema(BaseModel):
 
     faction_id: str
     name: str
-    roster: list[dict[str, Any]]
+    roster: list[MatchPlayerSchema] = Field(alias="players")
     win_probability: float | None = None
     average_skill_level: int | None = None
     rating: int | None = None
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
 
 
 class MatchDetails(BaseModel):
@@ -25,29 +40,23 @@ class MatchDetails(BaseModel):
     region: str
     status: str
 
-    # Информация о соревновании
     competition_id: str
     competition_type: str
     competition_name: str
     organizer_id: str
 
-    # Команды
     teams: list[TeamSchema]
 
-    # Данные голосования
     maps: list[str]
     location: str
 
-    # Результат игры
     winner: str
     score: dict[str, int]
 
-    # Временные метки (UTC)
     configured_at: datetime
     started_at: datetime
     finished_at: datetime
 
-    # Конфигурация и метаданные
     best_of: int
     calculate_elo: bool
     faceit_url: str
@@ -56,59 +65,58 @@ class MatchDetails(BaseModel):
     @classmethod
     def prepare_match_data(cls, data: Any) -> Any:
         """Комплексный трансформатор сырых данных матча."""
-        if isinstance(data, dict):
-            # Превращаем объект factions в список для связи
-            raw_teams = data.get("teams", {})
-            teams_list = []
-            for faction_key in ["faction1", "faction2"]:
-                t = raw_teams.get(faction_key, {})
-                stats = t.get("stats", {})
-                teams_list.append(
+        if not isinstance(data, dict):
+            return data
+        
+        # Трансформация команд
+        raw_teams = data.get("teams", {})
+        teams_list = []
+        for faction_key in ["faction1", "faction2"]:
+            t = raw_teams.get(faction_key, {}) if "faction1" in raw_teams else t
+            if not t: continue
+
+            stats = t.get("stats", {})
+            teams_list.append({
+                "faction_id": t.get("faction_id"),
+                "name": t.get("name"),
+                "players": [
                     {
-                        "faction_id": t.get("faction_id"),
-                        "name": t.get("name"),
-                        "roster": t.get("roster", []),
-                        "win_probability": stats.get("winProbability"),
-                        "average_skill_level": stats.get("skillLevel", {}).get(
-                            "average"
-                        ),
-                        "rating": stats.get("rating"),
-                    }
-                )
-            data["teams"] = teams_list
+                        "player_id": p.get("player_id"),
+                        "nickname": p.get("nickname"),
+                        "membership": p.get("membership"),
+                        "game_player_id": p.get("game_player_id"),
+                        "game_player_name": p.get("game_player_name"),
+                        "game_skill_level": p.get("game_skill_level", 0),
+                    } for p in t.get("roster", [])
+                ],
+                "win_probability": stats.get("winProbability"),
+                "average_skill_level": stats.get("skillLevel", {}).get("average"),
+                "rating": stats.get("rating"),
+            })
+        data["teams"] = teams_list
 
-            # Конвертация строк в datetime с принудительным UTC
-            date_fields = ["configured_at", "started_at", "finished_at"]
-            for field in date_fields:
-                value = data.get(field)
-                if value is None:
-                    continue
+        # Конвертация строк в datetime с принудительным UTC
+        for field in ["configured_at", "started_at", "finished_at"]:
+            value = data.get(field)
+            if value in (None, 0):
+                data[field] = datetime.now(timezone.utc)
+            elif isinstance(value, (int, float)):
+                data[field] = datetime.fromtimestamp(value, tz=timezone.utc)
 
-                if isinstance(value, (int, float)):
-                    data[field] = datetime.fromtimestamp(value, tz=timezone.utc)
-                elif isinstance(value, str):
-                    dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-                    data[field] = dt.astimezone(timezone.utc)
+        # Голосование
+        voting = data.get("voting", {})
+        data["maps"] = voting.get("map", {}).get("pick", [])
+        loc_picks = voting.get("location", {}).get("pick", [])
+        data["location"] = loc_picks[0] if loc_picks else "unknown"
 
-            # Раскрытие структуры голосования
-            voting = data.get("voting", {})
+        # Результаты
+        results = data.get("results", {})
+        data["winner"] = results.get("winner", "TBD")
+        data["score"] = results.get("score", {})
 
-            # Извлечение карты
-            map_info = voting.get("map", {})
-            data["maps"] = map_info.get("pick", [])
-
-            # Извлечение локации (сервера)
-            loc_info = voting.get("location", {})
-            data["location"] = loc_info.get("pick", ["unknown"])[0]
-
-            # Упрощение структуры результатов
-            results = data.get("results", {})
-            data["winner"] = results.get("winner", "")
-            data["score"] = results.get("score", {})
-
-            # Формирование локализованной ссылки
-            url: str = data.get("faceit_url", "")
-            data["faceit_url"] = url.replace("{lang}", settings.faceit.default_language)
+        # Формирование локализованной ссылки
+        url: str = data.get("faceit_url", "")
+        data["faceit_url"] = url.replace("{lang}", settings.faceit.default_language)
 
         return data
 

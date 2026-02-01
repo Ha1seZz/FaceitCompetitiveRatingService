@@ -15,7 +15,7 @@ class Player(Base):
     verified: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
 
     # Связь со сторонними сервисами
-    steam_nickname: Mapped[str] = mapped_column(nullable=True)
+    steam_nickname: Mapped[str | None] = mapped_column(nullable=True)
     # Используется BigInteger для корректного хранения длинных 64-битных ID Steam
     steam_id_64: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
 
