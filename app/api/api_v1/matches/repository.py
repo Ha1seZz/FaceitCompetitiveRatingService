@@ -25,7 +25,11 @@ class MatchRepository:
 
     async def get_all_by_region(self, region: str) -> list[Match]:
         """Извлекает список всех матчей, принадлежащих конкретному региону (например, EU, US)."""
-        stmt = select(Match).where(Match.region == region)
+        stmt = (
+            select(Match)
+            .where(Match.region == region)
+            .options(selectinload(Match.teams))
+        )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
