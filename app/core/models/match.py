@@ -1,12 +1,16 @@
 """Модуль модели данных матча."""
 
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ARRAY, DateTime, JSON, String, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.settings.base import Base
+from app.core.models.team import Team
+
+if TYPE_CHECKING:
+    from app.core.models.team import Team
 
 
 class Match(Base):
@@ -23,8 +27,10 @@ class Match(Base):
     competition_name: Mapped[str] = mapped_column(nullable=False)
     organizer_id: Mapped[str] = mapped_column(nullable=False, index=True)
 
-    # Данные о командах (хранятся в JSON для гибкости структуры участников)
-    teams: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    # Данные о командах
+    teams: Mapped[list["Team"]] = relationship(
+        "Team", back_populates="match", cascade="all, delete-orphan"
+    )
 
     # Итоги голосования капитанов
     maps: Mapped[list[str]] = mapped_column(

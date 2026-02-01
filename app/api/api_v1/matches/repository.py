@@ -1,6 +1,7 @@
 """Репозиторий для работы с матчами в базе данных."""
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.models.match import Match
@@ -14,7 +15,11 @@ class MatchRepository:
 
     async def get_by_match_id(self, match_id: str) -> Match | None:
         """Выполняет поиск конкретного матча по его идентификатору Faceit."""
-        stmt = select(Match).where(Match.match_id == match_id)
+        stmt = (
+            select(Match)
+            .where(Match.match_id == match_id)
+            .options(selectinload(Match.teams))
+        )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
