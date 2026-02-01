@@ -29,6 +29,7 @@ class Match(Base):
         back_populates="match",
         cascade="all, delete-orphan",
         passive_deletes=True,
+        lazy="selectin",
     )
 
     maps: Mapped[list[str]] = mapped_column(

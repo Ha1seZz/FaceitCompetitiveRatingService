@@ -39,12 +39,13 @@ class MatchService:
                 for key, value in data.items():
                     setattr(match, key, value)
                 match.teams = build_teams(teams_raw)
-                await self.repository.update(match)
+                match = await self.repository.update(match)
             else:  # Создание новой записи
                 new_match = Match(**data)
                 new_match.teams = build_teams(teams_raw)
-                await self.repository.create(new_match)
+                match = await self.repository.create(new_match)
 
+            await self.session.flush()
             await self.session.refresh(match, attribute_names=["teams"])
         return match
 

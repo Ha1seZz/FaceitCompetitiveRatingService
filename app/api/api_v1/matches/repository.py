@@ -36,9 +36,11 @@ class MatchRepository:
         """Добавляет новый матч в сессию и фиксирует состояние."""
         self.session.add(match)
         await self.session.flush()
+        await self.session.refresh(match)
         return match
 
     async def update(self, match: Match) -> Match:
         """Синхронизирует изменения в существующем матче с базой данных."""
         await self.session.flush()
+        await self.session.refresh(match)
         return match
