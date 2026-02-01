@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, JSON, text
+from sqlalchemy import ARRAY, DateTime, JSON, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.settings.base import Base
@@ -27,7 +27,12 @@ class Match(Base):
     teams: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
 
     # Итоги голосования капитанов
-    map: Mapped[str] = mapped_column(nullable=False, index=True)
+    maps: Mapped[list[str]] = mapped_column(
+        ARRAY(String),
+        nullable=False,
+        server_default="{}",
+        index=True,
+    )
     location: Mapped[str] = mapped_column(nullable=False)
 
     # Итоговый результат

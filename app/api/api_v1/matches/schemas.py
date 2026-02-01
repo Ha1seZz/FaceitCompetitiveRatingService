@@ -64,7 +64,7 @@ class MatchDetails(BaseModel):
 
             # Извлечение карты
             map_info = voting.get("map", {})
-            data["map"] = map_info.get("pick", ["unknown"])[0]
+            data["maps"] = map_info.get("pick", [])
 
             # Извлечение локации (сервера)
             loc_info = voting.get("location", {})
