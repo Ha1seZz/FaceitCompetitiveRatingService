@@ -1,10 +1,10 @@
 """Эндпоинты для управления данными матчей."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from .services.match_service import MatchService
 from .dependencies import get_current_match_details, get_match_service
-from .schemas import MatchDetails
+from .schemas import MatchDetails, MatchPublic
 from app.core.config import settings
 
 
@@ -14,14 +14,23 @@ router = APIRouter(
 )
 
 
+@router.get("/", response_model=list[MatchPublic])
+async def get_matches(
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    match_service: MatchService = Depends(get_match_service),
+):
+    """Получить все матчи из локальной базы данных."""
+    return await match_service.get_matches(limit=limit, offset=offset)
+
+
 @router.get("/{match_id}", response_model=MatchDetails)
 async def get_match_details(
     match_data: dict = Depends(get_current_match_details),
     match_service: MatchService = Depends(get_match_service),
 ):
     """Получить детали матча и синхронизировать их с локальной базой данных."""
-    match = await match_service.create_or_update_from_faceit(match_data)
-    return match
+    return await match_service.create_or_update_from_faceit(match_data)
 
 
 @router.get("/region/{region}", response_model=list[MatchDetails])
@@ -30,5 +39,4 @@ async def get_matches_by_region(
     match_service: MatchService = Depends(get_match_service),
 ):
     """Получить список всех завершенных матчей в указанном регионе."""
-    matches = await match_service.get_finished_matches_by_region(region)
-    return matches
+    return await match_service.get_finished_matches_by_region(region)

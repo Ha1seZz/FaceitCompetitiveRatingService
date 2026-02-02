@@ -14,6 +14,19 @@ class MatchRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
+    async def create(self, match: Match) -> Match:
+        """Добавляет новый матч в сессию и фиксирует состояние."""
+        self.session.add(match)
+        await self.session.flush()
+        await self.session.refresh(match)
+        return match
+
+    async def get_all(self, limit: int, offset: int) -> list[Match]:
+        """Извлекает все матчи из базы данных."""
+        stmt = select(Match).offset(offset).limit(limit)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_by_match_id(self, match_id: str) -> Match | None:
         """Выполняет поиск конкретного матча по его идентификатору Faceit."""
         stmt = (
@@ -31,13 +44,6 @@ class MatchRepository:
             .options(selectinload(Match.teams).selectinload(Team.players))
         )
         return list((await self.session.execute(stmt)).scalars().all())
-
-    async def create(self, match: Match) -> Match:
-        """Добавляет новый матч в сессию и фиксирует состояние."""
-        self.session.add(match)
-        await self.session.flush()
-        await self.session.refresh(match)
-        return match
 
     async def update(self, match: Match) -> Match:
         """Синхронизирует изменения в существующем матче с базой данных."""

@@ -67,32 +67,36 @@ class MatchDetails(BaseModel):
         """Комплексный трансформатор сырых данных матча."""
         if not isinstance(data, dict):
             return data
-        
+
         # Трансформация команд
         raw_teams = data.get("teams", {})
         teams_list = []
         for faction_key in ["faction1", "faction2"]:
             t = raw_teams.get(faction_key, {}) if "faction1" in raw_teams else t
-            if not t: continue
+            if not t:
+                continue
 
             stats = t.get("stats", {})
-            teams_list.append({
-                "faction_id": t.get("faction_id"),
-                "name": t.get("name"),
-                "players": [
-                    {
-                        "player_id": p.get("player_id"),
-                        "nickname": p.get("nickname"),
-                        "membership": p.get("membership"),
-                        "game_player_id": p.get("game_player_id"),
-                        "game_player_name": p.get("game_player_name"),
-                        "game_skill_level": p.get("game_skill_level", 0),
-                    } for p in t.get("roster", [])
-                ],
-                "win_probability": stats.get("winProbability"),
-                "average_skill_level": stats.get("skillLevel", {}).get("average"),
-                "rating": stats.get("rating"),
-            })
+            teams_list.append(
+                {
+                    "faction_id": t.get("faction_id"),
+                    "name": t.get("name"),
+                    "players": [
+                        {
+                            "player_id": p.get("player_id"),
+                            "nickname": p.get("nickname"),
+                            "membership": p.get("membership"),
+                            "game_player_id": p.get("game_player_id"),
+                            "game_player_name": p.get("game_player_name"),
+                            "game_skill_level": p.get("game_skill_level", 0),
+                        }
+                        for p in t.get("roster", [])
+                    ],
+                    "win_probability": stats.get("winProbability"),
+                    "average_skill_level": stats.get("skillLevel", {}).get("average"),
+                    "rating": stats.get("rating"),
+                }
+            )
         data["teams"] = teams_list
 
         # Конвертация строк в datetime с принудительным UTC
@@ -124,10 +128,16 @@ class MatchDetails(BaseModel):
 class MatchStats(BaseModel):
     """Дополнительная статистика матча (расширяемая)."""
 
-    ...
+    pass
 
 
 class MatchCreate(MatchDetails, MatchStats):
     """Объединенная схема для создания или синхронизации матча в БД."""
+
+    pass
+
+
+class MatchPublic(MatchStats, MatchDetails):
+    """Объединенная схема для вывода матча."""
 
     pass

@@ -49,6 +49,10 @@ class MatchService:
             await self.session.refresh(match, attribute_names=["teams"])
         return match
 
+    async def get_matches(self, limit: int, offset: int) -> list[Match]:
+        """Получает список всех матчей."""
+        return await self.repository.get_all(limit=limit, offset=offset)
+
     async def get_finished_matches_by_region(self, region: str) -> list[Match]:
         """Возвращает список только завершенных матчей для указанного региона."""
         matches = await self.repository.get_all_by_region(region)

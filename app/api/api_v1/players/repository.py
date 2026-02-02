@@ -12,12 +12,6 @@ class PlayerRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_by_player_id(self, player_id: str) -> Player | None:
-        """Выполняет поиск игрока по его уникальному идентификатору Faceit."""
-        stmt = select(Player).where(Player.player_id == player_id)
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
-
     async def create(self, player: Player) -> Player:
         """Регистрирует новый объект игрока в сессии и сохраняет его в БД."""
         self.session.add(player)
@@ -30,6 +24,12 @@ class PlayerRepository:
         stmt = select(Player).offset(offset).limit(limit)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_by_player_id(self, player_id: str) -> Player | None:
+        """Выполняет поиск игрока по его уникальному идентификатору Faceit."""
+        stmt = select(Player).where(Player.player_id == player_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def update(self, player: Player) -> Player:
         """Синхронизирует изменения существующего объекта игрока с базой данных."""
