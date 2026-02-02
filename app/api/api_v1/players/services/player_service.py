@@ -1,5 +1,6 @@
 """Сервис для управления бизнес-логикой игроков."""
 
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.api_v1.players.schemas import PlayerCreate
@@ -34,5 +35,15 @@ class PlayerService:
         return player
 
     async def get_players(self, limit: int, offset: int) -> list[Player]:
-        """Получает список всех игроков"""
+        """Получает список всех игроков."""
         return await self.repository.get_all(limit=limit, offset=offset)
+
+    async def delete_player(self, player_id: str) -> None:
+        """Проверяет результат удаления и вызывает исключение, если игрок не найден."""
+        success = await self.repository.delete_player(player_id=player_id)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Игрок с ID {player_id} не найден в базе данных."
+            )

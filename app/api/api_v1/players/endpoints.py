@@ -1,6 +1,6 @@
 """Эндпоинты для управления данными игроков."""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 
 from .services.player_service import PlayerService
 from .dependencies import get_current_faceit_player, get_player_service
@@ -37,3 +37,12 @@ async def get_player_profile(
 async def get_player_cs_stats(player: dict = Depends(get_current_faceit_player)):
     """Получить только Counter-Strike статистику игрока."""
     return player
+
+
+@router.delete("/{player_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_player(
+    player_id: str,
+    player_service: PlayerService = Depends(get_player_service),
+):
+    """Удалить игрока из локальной базы данных."""
+    return await player_service.delete_player(player_id=player_id)
