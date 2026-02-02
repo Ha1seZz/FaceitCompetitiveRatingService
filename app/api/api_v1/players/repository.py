@@ -31,6 +31,12 @@ class PlayerRepository:
         await self.session.refresh(player)
         return player
 
+    async def get_all(self, limit: int, offset: int) -> list[Player]:
+        """Извлекает всех игроков из базы данных."""
+        stmt = select(Player).offset(offset).limit(limit)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     async def update(self, player: Player) -> Player:
         """Синхронизирует изменения существующего объекта игрока с базой данных."""
         await self.session.flush()

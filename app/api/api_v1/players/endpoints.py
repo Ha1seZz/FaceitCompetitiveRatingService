@@ -1,10 +1,10 @@
 """Эндпоинты для управления данными игроков."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from .services.player_service import PlayerService
 from .dependencies import get_current_faceit_player, get_player_service
-from .schemas import PlayerProfileDetails, PlayerCSStats
+from .schemas import PlayerProfileDetails, PlayerCSStats, PlayerPublic
 from app.core.config import settings
 
 
@@ -14,14 +14,23 @@ router = APIRouter(
 )
 
 
+@router.get("/", response_model=list[PlayerPublic])
+async def get_players(
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    player_service: PlayerService = Depends(get_player_service),
+):
+    """Получить всех игроков из локальной базы данных."""
+    return await player_service.get_players(limit=limit, offset=offset)
+
+
 @router.get("/profile/{nickname}", response_model=PlayerProfileDetails)
 async def get_player_profile(
     player_data: dict = Depends(get_current_faceit_player),
     player_service: PlayerService = Depends(get_player_service),
-):
+):  
     """Получить профиль игрока и синхронизировать его с локальной базой данных."""
-    player = await player_service.create_or_update_from_faceit(player_data)
-    return player
+    return await player_service.create_or_update_from_faceit(player_data)
 
 
 @router.get("/cs-stats/{nickname}", response_model=PlayerCSStats)

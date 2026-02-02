@@ -32,3 +32,7 @@ class PlayerService:
                 player = await self.repository.create(new_player)
 
         return player
+
+    async def get_players(self, limit: int, offset: int) -> list[Player]:
+        """Получает список всех игроков"""
+        return await self.repository.get_all(limit=limit, offset=offset)

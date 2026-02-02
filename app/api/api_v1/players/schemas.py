@@ -60,7 +60,13 @@ class PlayerCSStats(BaseModel):
         return data
 
 
-class PlayerCreate(PlayerProfileDetails, PlayerCSStats):
+class PlayerCreate(PlayerCSStats, PlayerProfileDetails):
     """Объединенная схема для создания или обновления игрока в базе данных."""
+
+    pass
+
+
+class PlayerPublic(PlayerCSStats, PlayerProfileDetails):
+    """Объединенная схема для вывода игрока."""
 
     pass
