@@ -50,3 +50,15 @@ class MatchRepository:
         await self.session.flush()
         await self.session.refresh(match)
         return match
+
+    async def delete_match(self, match_id: str) -> bool:
+        """
+        Удаляет матч из базы данных по его match_id.
+        Возвращает True, если матч был найден и удален, иначе False.
+        """
+        async with self.session.begin():
+            match = await self.session.get(Match, match_id)
+            if match:
+                await self.session.delete(match)
+                return True
+            return False

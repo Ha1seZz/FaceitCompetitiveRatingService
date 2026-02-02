@@ -1,5 +1,6 @@
 """Сервис для управления бизнес-логикой матчей."""
 
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.models.match_player import MatchPlayer
@@ -57,3 +58,13 @@ class MatchService:
         """Возвращает список только завершенных матчей для указанного региона."""
         matches = await self.repository.get_all_by_region(region)
         return [m for m in matches if m.status == "FINISHED"]
+
+    async def delete_match(self, match_id: str) -> None:
+        """Проверяет результат удаления и вызывает исключение, если матч не найден."""
+        success = await self.repository.delete_match(match_id=match_id)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Матч с ID {match_id} не найден в базе данных."
+            )
