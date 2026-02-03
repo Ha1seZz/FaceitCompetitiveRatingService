@@ -3,8 +3,19 @@
 from fastapi import APIRouter, Depends, Query, status
 
 from .services.player_service import PlayerService
-from .dependencies import fetch_player_maps_data, get_current_faceit_player, get_player_service
-from .schemas import MapStatsResponse, PlayerProfileDetails, PlayerCSStats, PlayerPublic
+from .dependencies import (
+    fetch_player_maps_data,
+    get_current_faceit_player,
+    get_player_service,
+)
+from .schemas import (
+    MapSortField,
+    MapStatsResponse,
+    PlayerProfileDetails,
+    PlayerCSStats,
+    PlayerPublic,
+    SortDirection,
+)
 from app.core.config import settings
 
 
@@ -28,7 +39,7 @@ async def get_players(
 async def get_player_profile(
     player_data: dict = Depends(get_current_faceit_player),
     player_service: PlayerService = Depends(get_player_service),
-):  
+):
     """Получить профиль игрока и синхронизировать его с локальной базой данных."""
     return await player_service.create_or_update_from_faceit(player_data)
 
@@ -41,11 +52,17 @@ async def get_player_cs_stats(player: dict = Depends(get_current_faceit_player))
 
 @router.get("/maps-stats/{nickname}", response_model=list[MapStatsResponse])
 async def get_player_maps_stats(
+    sort_field: MapSortField = Query(MapSortField.matches),
+    sort_direction: SortDirection = Query(SortDirection.desc),
     player_maps_data: dict = Depends(fetch_player_maps_data),
     player_service: PlayerService = Depends(get_player_service),
 ):
-    """Получить детализированную статистику игрока по всем картам."""
-    return await player_service.transform_maps_stats(player_maps_data)
+    """Получить статистику игрока по картам с возможностью гибкой сортировки."""
+    return await player_service.transform_maps_stats(
+        player_maps_data,
+        sort_by=sort_field,
+        sort_direction=sort_direction,
+    )
 
 
 @router.delete("/{player_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -1,6 +1,7 @@
 """Схемы Pydantic для сущности 'Игрок'."""
 
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any
 from pydantic import BaseModel, Field, model_validator
 
@@ -134,3 +135,32 @@ class PlayerPublic(PlayerCSStats, PlayerProfileDetails):
     """Объединенная схема для вывода игрока."""
 
     pass
+
+
+class MapSortField(str, Enum):
+    """Доступные поля для сортировки статистики по картам."""
+
+    matches = "matches"
+    won = "won"
+    lost = "lost"
+    winrate = "winrate"
+    average_kills = "average_kills"
+    average_deaths = "average_deaths"
+    average_kd_ratio = "average_kd_ratio"
+    average_kr_ratio = "average_kr_ratio"
+    hs = "hs"
+    adr = "adr"
+    rounds = "rounds"
+    kills = "kills"
+    assists = "assists"
+    deaths = "deaths"
+    headshots = "headshots"
+    total_damage = "total_damage"
+    penta_kills = "penta_kills"
+
+
+class SortDirection(str, Enum):
+    """Направление сортировки: по возрастанию или убыванию."""
+
+    asc = "asc"
+    desc = "desc"

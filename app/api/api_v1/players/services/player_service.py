@@ -3,7 +3,12 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.api_v1.players.schemas import MapStatsResponse, PlayerCreate
+from app.api.api_v1.players.schemas import (
+    MapSortField,
+    MapStatsResponse,
+    PlayerCreate,
+    SortDirection,
+)
 from app.api.api_v1.players.repository import PlayerRepository
 from app.core.models import Player
 
@@ -38,15 +43,25 @@ class PlayerService:
         """Получает список всех игроков."""
         return await self.repository.get_all(limit=limit, offset=offset)
 
-    async def transform_maps_stats(self, raw_data: dict) -> list[MapStatsResponse]:
-        """Преобразует сырые сегменты данных Faceit в список валидированных моделей."""
+    async def transform_maps_stats(
+        self,
+        raw_data: dict,
+        sort_by: MapSortField,
+        sort_direction: SortDirection,
+    ) -> list[MapStatsResponse]:
+        """Преобразует сырые сегменты в отсортированный список валидированных моделей."""
         segments = raw_data.get("segments", [])
 
-        return [
-            MapStatsResponse(**segment) 
-            for segment in segments 
+        stats = [
+            MapStatsResponse(**segment)
+            for segment in segments
             if segment.get("type") == "Map"
         ]
+
+        reverse = sort_direction == SortDirection.desc
+        stats.sort(key=lambda x: getattr(x, sort_by.value), reverse=reverse)
+
+        return stats
 
     async def delete_player(self, player_id: str) -> None:
         """Проверяет результат удаления и вызывает исключение, если игрок не найден."""
@@ -55,5 +70,5 @@ class PlayerService:
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Игрок с ID {player_id} не найден в базе данных."
+                detail=f"Игрок с ID {player_id} не найден в базе данных.",
             )
