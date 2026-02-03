@@ -3,7 +3,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.api_v1.players.schemas import PlayerCreate
+from app.api.api_v1.players.schemas import MapStatsResponse, PlayerCreate
 from app.api.api_v1.players.repository import PlayerRepository
 from app.core.models import Player
 
@@ -37,6 +37,16 @@ class PlayerService:
     async def get_players(self, limit: int, offset: int) -> list[Player]:
         """Получает список всех игроков."""
         return await self.repository.get_all(limit=limit, offset=offset)
+
+    async def transform_maps_stats(self, raw_data: dict) -> list[MapStatsResponse]:
+        """Преобразует сырые сегменты данных Faceit в список валидированных моделей."""
+        segments = raw_data.get("segments", [])
+
+        return [
+            MapStatsResponse(**segment) 
+            for segment in segments 
+            if segment.get("type") == "Map"
+        ]
 
     async def delete_player(self, player_id: str) -> None:
         """Проверяет результат удаления и вызывает исключение, если игрок не найден."""

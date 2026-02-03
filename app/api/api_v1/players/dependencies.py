@@ -44,3 +44,23 @@ async def get_current_faceit_player(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e),
         )
+
+
+async def fetch_player_maps_data(
+    nickname: str,
+    faceit_client: FaceitClient = Depends(get_faceit_client),
+) -> dict:
+    """Находит ID игрока по никнейму и запрашивает его статистику."""
+    try:
+        player_id = await faceit_client.get_player_id_by_nickname(nickname=nickname)
+        return await faceit_client.get_player_maps_stats_raw(player_id=player_id)
+    except FaceitEntityNotFound as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except ExternalServiceUnavailable as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e),
+        )

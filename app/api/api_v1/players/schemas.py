@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 from typing import Any
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from app.core.config import settings
 
@@ -58,6 +58,70 @@ class PlayerCSStats(BaseModel):
             data["faceit_elo"] = cs_info.get("faceit_elo", 0)
 
         return data
+
+
+class MapStatsResponse(BaseModel):
+    """Схема статистики игрока по картам."""
+
+    map_name: str = Field(..., alias="label")
+    matches: int
+    won: int
+    lost: int
+    winrate: float
+    average_kills: float
+    average_deaths: float
+    average_kd_ratio: float
+    average_kr_ratio: float
+    hs: float
+    adr: float
+    rounds: int
+    kills: int
+    assists: int
+    deaths: int
+    headshots: int
+    total_damage: int
+    penta_kills: int
+
+    @model_validator(mode="before")
+    @classmethod
+    def extract_map_stats(cls, data: Any) -> Any:
+        """Парсинг игровой статистики по конкретной карте из данных Faceit."""
+        if not isinstance(data, dict) or "stats" not in data:
+            return data
+
+        stats: dict = data.get("stats", {})
+
+        matches = int(stats.get("Matches", 0))
+        won = int(stats.get("Wins", 0))
+        kills = int(stats.get("Kills", 0))
+        headshots = int(stats.get("Headshots", 0))
+
+        lost = matches - won
+        winrate = round(((won / matches) * 100), 2) if matches > 0 else 0.0
+        hs_ratio = round(((headshots / kills) * 100), 2) if kills > 0 else 0.0
+        return {
+            "map_name": data.get("label"),
+            "matches": matches,
+            "won": won,
+            "lost": lost,
+            "winrate": winrate,
+            "average_kills": float(stats.get("Average Kills", 0)),
+            "average_deaths": float(stats.get("Average Deaths", 0)),
+            "average_kd_ratio": float(stats.get("Average K/D Ratio", 0)),
+            "average_kr_ratio": float(stats.get("Average K/R Ratio", 0)),
+            "hs": hs_ratio,
+            "adr": float(stats.get("ADR", 0)),
+            "rounds": int(stats.get("Rounds", 0)),
+            "kills": kills,
+            "assists": int(stats.get("Assists", 0)),
+            "deaths": int(stats.get("Deaths", 0)),
+            "headshots": headshots,
+            "total_damage": int(stats.get("Total Damage", 0)),
+            "penta_kills": int(stats.get("Penta Kills", 0)),
+        }
+
+    class Config:
+        populate_by_name = True
 
 
 class PlayerCreate(PlayerCSStats, PlayerProfileDetails):

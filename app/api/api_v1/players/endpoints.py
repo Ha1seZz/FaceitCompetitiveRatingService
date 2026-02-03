@@ -3,8 +3,8 @@
 from fastapi import APIRouter, Depends, Query, status
 
 from .services.player_service import PlayerService
-from .dependencies import get_current_faceit_player, get_player_service
-from .schemas import PlayerProfileDetails, PlayerCSStats, PlayerPublic
+from .dependencies import fetch_player_maps_data, get_current_faceit_player, get_player_service
+from .schemas import MapStatsResponse, PlayerProfileDetails, PlayerCSStats, PlayerPublic
 from app.core.config import settings
 
 
@@ -37,6 +37,15 @@ async def get_player_profile(
 async def get_player_cs_stats(player: dict = Depends(get_current_faceit_player)):
     """Получить только Counter-Strike статистику игрока."""
     return player
+
+
+@router.get("/maps-stats/{nickname}", response_model=list[MapStatsResponse])
+async def get_player_maps_stats(
+    player_maps_data: dict = Depends(fetch_player_maps_data),
+    player_service: PlayerService = Depends(get_player_service),
+):
+    """Получить детализированную статистику игрока по всем картам."""
+    return await player_service.transform_maps_stats(player_maps_data)
 
 
 @router.delete("/{player_id}", status_code=status.HTTP_204_NO_CONTENT)

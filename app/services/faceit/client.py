@@ -38,3 +38,22 @@ class FaceitClient:
 
         response.raise_for_status()
         return response.json()
+
+    async def get_player_id_by_nickname(self, nickname: str) -> str:
+        """Получает player_id по его никнейму."""
+        response = await self.client.get(
+            f"/players",
+            params={"nickname": nickname},
+        )
+        response.raise_for_status()
+        return response.json().get("player_id")
+
+    async def get_player_maps_stats_raw(
+        self,
+        player_id: str,
+        game_id: str = "cs2",
+    ) -> dict:
+        """Запрашивает необработанную статистику игрока по каждой карте."""
+        response = await self.client.get(f"/players/{player_id}/stats/{game_id}")
+        response.raise_for_status()
+        return response.json()
