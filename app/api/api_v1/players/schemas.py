@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from app.core.config import settings
 
@@ -61,10 +61,22 @@ class PlayerCSStats(BaseModel):
         return data
 
 
-class MapStatsResponse(BaseModel):
-    """Схема статистики игрока по картам."""
+class PlayerCreate(PlayerCSStats, PlayerProfileDetails):
+    """Объединенная схема для создания или обновления игрока в базе данных."""
 
-    map_name: str = Field(..., alias="label")
+    pass
+
+
+class PlayerPublic(PlayerCSStats, PlayerProfileDetails):
+    """Публичная схема для отображения полной информации об игроке в API."""
+
+    pass
+
+
+class MapStatsBase(BaseModel):
+    """Базовая структура статистики игрока на конкретной карте."""
+
+    map_name: str
     matches: int
     won: int
     lost: int
@@ -90,49 +102,49 @@ class MapStatsResponse(BaseModel):
         if not isinstance(data, dict) or "stats" not in data:
             return data
 
-        stats: dict = data.get("stats", {})
+        s: dict = data.get("stats", {})
 
-        matches = int(stats.get("Matches", 0))
-        won = int(stats.get("Wins", 0))
-        kills = int(stats.get("Kills", 0))
-        headshots = int(stats.get("Headshots", 0))
+        m = int(s.get("Matches", 0))
+        w = int(s.get("Wins", 0))
+        k = int(s.get("Kills", 0))
+        hs = int(s.get("Headshots", 0))
 
-        lost = matches - won
-        winrate = round(((won / matches) * 100), 2) if matches > 0 else 0.0
-        hs_ratio = round(((headshots / kills) * 100), 2) if kills > 0 else 0.0
+        lost = m - w
+        winrate = round(((w / m) * 100), 2) if m > 0 else 0.0
+        hs_ratio = round(((hs / k) * 100), 2) if k > 0 else 0.0
         return {
             "map_name": data.get("label"),
-            "matches": matches,
-            "won": won,
+            "matches": m,
+            "won": w,
             "lost": lost,
             "winrate": winrate,
-            "average_kills": float(stats.get("Average Kills", 0)),
-            "average_deaths": float(stats.get("Average Deaths", 0)),
-            "average_kd_ratio": float(stats.get("Average K/D Ratio", 0)),
-            "average_kr_ratio": float(stats.get("Average K/R Ratio", 0)),
+            "average_kills": float(s.get("Average Kills", 0)),
+            "average_deaths": float(s.get("Average Deaths", 0)),
+            "average_kd_ratio": float(s.get("Average K/D Ratio", 0)),
+            "average_kr_ratio": float(s.get("Average K/R Ratio", 0)),
             "hs": hs_ratio,
-            "adr": float(stats.get("ADR", 0)),
-            "rounds": int(stats.get("Rounds", 0)),
-            "kills": kills,
-            "assists": int(stats.get("Assists", 0)),
-            "deaths": int(stats.get("Deaths", 0)),
-            "headshots": headshots,
-            "total_damage": int(stats.get("Total Damage", 0)),
-            "penta_kills": int(stats.get("Penta Kills", 0)),
+            "adr": float(s.get("ADR", 0)),
+            "rounds": int(s.get("Rounds", 0)),
+            "kills": k,
+            "assists": int(s.get("Assists", 0)),
+            "deaths": int(s.get("Deaths", 0)),
+            "headshots": hs,
+            "total_damage": int(s.get("Total Damage", 0)),
+            "penta_kills": int(s.get("Penta Kills", 0)),
         }
 
-    class Config:
-        populate_by_name = True
+
+class MapStatsResponse(MapStatsBase):
+    """Схема ответа API со статистикой по картам."""
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+    )
 
 
-class PlayerCreate(PlayerCSStats, PlayerProfileDetails):
-    """Объединенная схема для создания или обновления игрока в базе данных."""
-
-    pass
-
-
-class PlayerPublic(PlayerCSStats, PlayerProfileDetails):
-    """Объединенная схема для вывода игрока."""
+class MapStatsCreate(MapStatsBase):
+    """Схема для создания записей статистики в базе данных."""
 
     pass
 
