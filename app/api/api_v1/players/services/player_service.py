@@ -3,18 +3,13 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.api_v1.players.schemas import (
-    MapSortField,
-    MapStatsResponse,
-    PlayerCreate,
-    SortDirection,
-)
-from app.api.api_v1.players.repository import PlayerRepository
+from app.api.api_v1.players.schemas import PlayerCreate
+from app.api.api_v1.players.player_repository import PlayerRepository
 from app.core.models import Player
 
 
 class PlayerService:
-    """Класс-сервис для обработки высокоуровневых операций с игроками."""
+    """Класс-сервис для обработки операций с игроками."""
 
     def __init__(self, session: AsyncSession, repository: PlayerRepository):
         self.session = session
@@ -42,26 +37,6 @@ class PlayerService:
     async def get_players(self, limit: int, offset: int) -> list[Player]:
         """Получает список всех игроков."""
         return await self.repository.get_all(limit=limit, offset=offset)
-
-    async def transform_maps_stats(
-        self,
-        raw_data: dict,
-        sort_by: MapSortField,
-        sort_direction: SortDirection,
-    ) -> list[MapStatsResponse]:
-        """Преобразует сырые сегменты в отсортированный список валидированных моделей."""
-        segments = raw_data.get("segments", [])
-
-        stats = [
-            MapStatsResponse(**segment)
-            for segment in segments
-            if segment.get("type") == "Map"
-        ]
-
-        reverse = sort_direction == SortDirection.desc
-        stats.sort(key=lambda x: getattr(x, sort_by.value), reverse=reverse)
-
-        return stats
 
     async def delete_player(self, player_id: str) -> None:
         """Проверяет результат удаления и вызывает исключение, если игрок не найден."""
