@@ -2,10 +2,15 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import httpx
 import uvicorn
+
+from app.api.exception_handlers import setup_exception_handlers
 from app.api import router as api_router
 
 
 app = FastAPI(title="Faceit Competitive Rating Service")
+
+setup_exception_handlers(app)
+
 app.include_router(api_router)
 
 
