@@ -1,6 +1,6 @@
 """Репозиторий для работы с игроками в базе данных."""
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.models.player import Player
@@ -13,14 +13,14 @@ class PlayerRepository:
         self.session = session
 
     async def create(self, player: Player) -> Player:
-        """Регистрирует новый объект игрока в сессии и сохраняет его в БД."""
+        """Сохраняет нового игрока в базе данных."""
         self.session.add(player)
         await self.session.flush()
         await self.session.refresh(player)
         return player
 
     async def get_all(self, limit: int, offset: int) -> list[Player]:
-        """Извлекает всех игроков из базы данных."""
+        """Возвращает список игроков с поддержкой пагинации."""
         stmt = select(Player).offset(offset).limit(limit)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
