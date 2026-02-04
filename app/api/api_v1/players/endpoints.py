@@ -2,10 +2,12 @@
 
 from fastapi import APIRouter, Depends, Query, status
 
+from app.api.api_v1.players.services.maps_stats_service import MapsStatsService
+
 from .services.player_service import PlayerService
 from .dependencies import (
-    fetch_player_maps_data,
     get_current_faceit_player,
+    get_maps_stats_service,
     get_player_service,
 )
 from .schemas import (
@@ -52,16 +54,16 @@ async def get_player_cs_stats(player: dict = Depends(get_current_faceit_player))
 
 @router.get("/maps-stats/{nickname}", response_model=list[MapStatsResponse])
 async def get_player_maps_stats(
-    sort_field: MapSortField = Query(MapSortField.matches),
-    sort_direction: SortDirection = Query(SortDirection.desc),
-    player_maps_data: dict = Depends(fetch_player_maps_data),
-    player_service: PlayerService = Depends(get_player_service),
+    nickname: str,
+    # sort_field: MapSortField = Query(MapSortField.matches),
+    # sort_direction: SortDirection = Query(SortDirection.desc),
+    maps_service: MapsStatsService = Depends(get_maps_stats_service),
 ):
-    """Получить статистику игрока по картам с возможностью гибкой сортировки."""
-    return await player_service.transform_maps_stats(
-        player_maps_data,
-        sort_by=sort_field,
-        sort_direction=sort_direction,
+    """Получить статистику по картам для игрока."""
+    return await maps_service.get_or_fetch_maps_stats(
+        nickname,
+        # sort_by=sort_field,
+        # sort_direction=sort_direction,
     )
 
 
