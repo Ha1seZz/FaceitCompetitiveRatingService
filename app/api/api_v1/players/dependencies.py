@@ -1,15 +1,15 @@
 """Зависимости модуля игроков."""
 
-from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
 
-from app.services.faceit.client import FaceitClient
+from app.api.api_v1.players.services.maps_stats_service import MapsStatsService
+from app.api.api_v1.players.maps_stats_repository import MapsStatsRepository
+from app.api.api_v1.players.services.player_service import PlayerService
+from app.api.api_v1.players.player_repository import PlayerRepository
 from app.services.faceit.dependencies import get_faceit_client
-from app.core.exceptions import FaceitEntityNotFound, ExternalServiceUnavailable
+from app.services.faceit.client import FaceitClient
 from app.core.settings import db_helper
-
-from .repository import PlayerRepository
-from .services.player_service import PlayerService
 
 
 async def get_player_repository(
@@ -27,40 +27,29 @@ async def get_player_service(
     return PlayerService(session=session, repository=repository)
 
 
+async def get_maps_stats_repository(
+    session: AsyncSession = Depends(db_helper.session_dependency),
+) -> MapsStatsRepository:
+    """Создает экземпляр репозитория статистики по картам."""
+    return MapsStatsRepository(session=session)
+
+
+async def get_maps_stats_service(
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    repository: MapsStatsRepository = Depends(get_maps_stats_repository),
+    faceit_client: FaceitClient = Depends(get_faceit_client),
+) -> MapsStatsService:
+    """Создает экземпляр сервиса статистики по картам."""
+    return MapsStatsService(
+        session=session,
+        repository=repository,
+        faceit_client=faceit_client,
+    )
+
+
 async def get_current_faceit_player(
     nickname: str,
     faceit_client: FaceitClient = Depends(get_faceit_client),
 ) -> dict:
-    """Запрашивает данные игрока напрямую из Faceit API и обрабатывает ошибки."""
-    try:
-        return await faceit_client.get_player(nickname=nickname)
-    except FaceitEntityNotFound as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        )
-    except ExternalServiceUnavailable as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e),
-        )
-
-
-async def fetch_player_maps_data(
-    nickname: str,
-    faceit_client: FaceitClient = Depends(get_faceit_client),
-) -> dict:
-    """Находит ID игрока по никнейму и запрашивает его статистику."""
-    try:
-        player_id = await faceit_client.get_player_id_by_nickname(nickname=nickname)
-        return await faceit_client.get_player_maps_stats_raw(player_id=player_id)
-    except FaceitEntityNotFound as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        )
-    except ExternalServiceUnavailable as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e),
-        )
+    """Запрашивает данные игрока напрямую из Faceit API."""
+    return await faceit_client.get_player(nickname=nickname)
