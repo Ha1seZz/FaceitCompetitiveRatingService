@@ -41,7 +41,7 @@ class MapStat(IdIntPkMixin, Base):
     total_damage: Mapped[int] = mapped_column(nullable=False, default=0)
     penta_kills: Mapped[int] = mapped_column(nullable=False, default=0)
 
-    player_id: Mapped[int] = mapped_column(
+    player_id: Mapped[str] = mapped_column(
         ForeignKey("players.player_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
