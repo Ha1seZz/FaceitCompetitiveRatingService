@@ -34,13 +34,14 @@ class MapsStatsService:
             return [MapStatsResponse.model_validate(s) for s in cached_stats]
 
         raw_stats = await self.faceit_client.get_player_maps_stats_raw(player_id)
-        return await self._save_stats(player_id, raw_stats)
+        db_instances = await self._save_stats(player_id, raw_stats)
+        return [MapStatsResponse.model_validate(s) for s in db_instances]
 
     async def _save_stats(
         self,
         player_id: str,
         raw_stats: dict,
-    ) -> list[MapStatsCreate]:
+    ) -> list[MapStat]:
         """Сохраняет статистику в БД."""
         segments = [s for s in raw_stats.get("segments", []) if s.get("type") == "Map"]
         validated_schemas = [MapStatsCreate(**stat) for stat in segments]
@@ -53,7 +54,7 @@ class MapsStatsService:
         ]
 
         await self.repository.bulk_create(db_instances)
-        return validated_schemas
+        return db_instances
 
     def _is_stale(self, stats: list, max_age_minutes: int) -> bool:
         """Проверяет устарел ли кеш."""
