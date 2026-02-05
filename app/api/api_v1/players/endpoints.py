@@ -2,6 +2,9 @@
 
 from fastapi import APIRouter, Depends, Query, status
 
+from app.api.api_v1.players.services.player_analysis_service import (
+    PlayerAnalysisService,
+)
 from app.api.api_v1.players.services.maps_stats_service import MapsStatsService
 
 from .services.player_service import PlayerService
@@ -11,12 +14,10 @@ from .dependencies import (
     get_player_service,
 )
 from .schemas import (
-    MapSortField,
     MapStatsResponse,
     PlayerProfileDetails,
     PlayerCSStats,
     PlayerPublic,
-    SortDirection,
 )
 from app.core.config import settings
 
@@ -55,18 +56,12 @@ async def get_player_cs_stats(player: dict = Depends(get_current_faceit_player))
 @router.get("/maps-stats/{nickname}", response_model=list[MapStatsResponse])
 async def get_player_maps_stats(
     nickname: str,
-    # sort_field: MapSortField = Query(MapSortField.matches),
-    # sort_direction: SortDirection = Query(SortDirection.desc),
     player_service: PlayerService = Depends(get_player_service),
     maps_service: MapsStatsService = Depends(get_maps_stats_service),
 ):
     """Обеспечить наличие игрока в БД и получить его статистику по картам."""
     player = await player_service.get_or_create_player(nickname)
-    return await maps_service.get_or_fetch_maps_stats(
-        player.player_id,
-        # sort_by=sort_field,
-        # sort_direction=sort_direction,
-    )
+    return await maps_service.get_or_fetch_maps_stats(player.player_id)
 
 
 @router.delete("/{player_id}", status_code=status.HTTP_204_NO_CONTENT)
