@@ -25,7 +25,7 @@ class MapsStatsService:
     async def get_or_fetch_maps_stats(
         self,
         player_id: str,
-        max_age_minutes: int = 1,
+        max_age_minutes: int = 15,
     ) -> list[MapStatsResponse]:
         """Получить статистику по картам для игрока."""
         cached_stats = await self.repository.get_by_player_id(player_id)
