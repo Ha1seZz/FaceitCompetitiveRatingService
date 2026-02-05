@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.api_v1.players.maps_stats_repository import MapsStatsRepository
 from app.api.api_v1.players.schemas import MapStatsCreate, MapStatsResponse
 from app.services.faceit.client import FaceitClient
-from app.core.models.map_stat import MapStat
+from app.core.models import MapStat
 
 
 class MapsStatsService:
@@ -24,11 +24,10 @@ class MapsStatsService:
 
     async def get_or_fetch_maps_stats(
         self,
-        nickname: str,
+        player_id: str,
         max_age_minutes: int = 1,
     ) -> list[MapStatsResponse]:
         """Получить статистику по картам для игрока."""
-        player_id = await self._resolve_player_id(nickname)
         cached_stats = await self.repository.get_by_player_id(player_id)
 
         if cached_stats and not self._is_stale(cached_stats, max_age_minutes):
@@ -36,10 +35,6 @@ class MapsStatsService:
 
         raw_stats = await self.faceit_client.get_player_maps_stats_raw(player_id)
         return await self._save_stats(player_id, raw_stats)
-
-    async def _resolve_player_id(self, nickname: str) -> str:
-        """Резолвит nickname в player_id через Faceit API."""
-        return await self.faceit_client.get_player_id_by_nickname(nickname)
 
     async def _save_stats(self, player_id: str, raw_stats: dict) -> None:
         """Сохраняет статистику в БД."""

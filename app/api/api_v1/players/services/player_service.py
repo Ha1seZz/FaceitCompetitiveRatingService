@@ -3,17 +3,24 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.api_v1.players.schemas import PlayerCreate
 from app.api.api_v1.players.player_repository import PlayerRepository
+from app.api.api_v1.players.schemas import PlayerCreate
+from app.services.faceit.client import FaceitClient
 from app.core.models import Player
 
 
 class PlayerService:
     """Класс-сервис для обработки операций с игроками."""
 
-    def __init__(self, session: AsyncSession, repository: PlayerRepository):
+    def __init__(
+        self,
+        session: AsyncSession,
+        repository: PlayerRepository,
+        faceit_client: FaceitClient,
+    ):
         self.session = session
         self.repository = repository
+        self.faceit_client = faceit_client
 
     async def create_or_update_from_faceit(self, player_data: dict) -> Player:
         """Синхронизирует данные игрока, полученные из внешнего API, с базой данных."""
@@ -21,18 +28,27 @@ class PlayerService:
         validated = PlayerCreate(**player_data)
         data = validated.model_dump()
 
-        async with self.session.begin():
-            player = await self.repository.get_by_player_id(data["player_id"])
+        player = await self.repository.get_by_player_id(data["player_id"])
 
-            if player:  # Обновление существующего игрока
-                for key, value in data.items():
-                    setattr(player, key, value)
-                player = await self.repository.update(player)
-            else:  # Создание новой записи
-                new_player = Player(**data)
-                player = await self.repository.create(new_player)
+        if player:  # Обновление существующего игрока
+            for key, value in data.items():
+                setattr(player, key, value)
+            player = await self.repository.update(player)
+        else:  # Создание новой записи
+            new_player = Player(**data)
+            player = await self.repository.create(new_player)
 
         return player
+
+    async def get_or_create_player(self, nickname: str) -> Player:
+        player = await self.repository.get_by_nickname(nickname)
+
+        if player:
+            return player
+
+        player_data = await self.faceit_client.get_player(nickname)
+
+        return await self.create_or_update_from_faceit(player_data=player_data)
 
     async def get_players(self, limit: int, offset: int) -> list[Player]:
         """Получает список всех игроков."""

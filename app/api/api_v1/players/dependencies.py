@@ -22,9 +22,14 @@ async def get_player_repository(
 async def get_player_service(
     session: AsyncSession = Depends(db_helper.session_dependency),
     repository: PlayerRepository = Depends(get_player_repository),
+    faceit_client: FaceitClient = Depends(get_faceit_client),
 ) -> PlayerService:
     """Создает экземпляр сервиса обработки логики игроков."""
-    return PlayerService(session=session, repository=repository)
+    return PlayerService(
+        session=session,
+        repository=repository,
+        faceit_client=faceit_client,
+    )
 
 
 async def get_maps_stats_repository(

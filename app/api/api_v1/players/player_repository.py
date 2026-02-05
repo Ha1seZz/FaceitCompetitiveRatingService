@@ -31,6 +31,12 @@ class PlayerRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_nickname(self, nickname: str) -> Player | None:
+        """Выполняет поиск игрока по его текущему никнейму."""
+        stmt = select(Player).where(Player.nickname == nickname)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def update(self, player: Player) -> Player:
         """Синхронизирует изменения существующего объекта игрока с базой данных."""
         await self.session.flush()

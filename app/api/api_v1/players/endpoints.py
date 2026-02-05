@@ -57,11 +57,13 @@ async def get_player_maps_stats(
     nickname: str,
     # sort_field: MapSortField = Query(MapSortField.matches),
     # sort_direction: SortDirection = Query(SortDirection.desc),
+    player_service: PlayerService = Depends(get_player_service),
     maps_service: MapsStatsService = Depends(get_maps_stats_service),
 ):
-    """Получить статистику по картам для игрока."""
+    """Обеспечить наличие игрока в БД и получить его статистику по картам."""
+    player = await player_service.get_or_create_player(nickname)
     return await maps_service.get_or_fetch_maps_stats(
-        nickname,
+        player.player_id,
         # sort_by=sort_field,
         # sort_direction=sort_direction,
     )
