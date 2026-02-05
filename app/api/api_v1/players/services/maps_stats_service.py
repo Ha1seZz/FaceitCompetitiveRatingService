@@ -36,7 +36,7 @@ class MapsStatsService:
         raw_stats = await self.faceit_client.get_player_maps_stats_raw(player_id)
         return await self._save_stats(player_id, raw_stats)
 
-    async def _save_stats(self, player_id: str, raw_stats: dict) -> None:
+    async def _save_stats(self, player_id: str, raw_stats: dict) -> list[MapStatsCreate]:
         """Сохраняет статистику в БД."""
         segments = [s for s in raw_stats.get("segments", []) if s.get("type") == "Map"]
         validated_schemas = [MapStatsCreate(**stat) for stat in segments]
