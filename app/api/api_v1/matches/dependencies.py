@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.faceit.client import FaceitClient
 from app.services.faceit.dependencies import get_faceit_client
-from app.core.exceptions import FaceitEntityNotFound, ExternalServiceUnavailable
 from app.core.settings import db_helper
 
 from .repository import MatchRepository
@@ -32,18 +31,7 @@ async def get_current_match_details(
     faceit_client: FaceitClient = Depends(get_faceit_client),
 ) -> dict:
     """Запрашивает данные матча напрямую из Faceit API и обрабатывает ошибки."""
-    try:
-        match_data = await faceit_client.get_match(match_id=match_id)
-    except FaceitEntityNotFound as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        )
-    except ExternalServiceUnavailable as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e),
-        )
+    match_data = await faceit_client.get_match(match_id=match_id)
 
     # Валидация жизненного цикла матча
     if match_data["status"] != "FINISHED":
