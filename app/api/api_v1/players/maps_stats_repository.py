@@ -20,9 +20,10 @@ class MapsStatsRepository:
 
     async def delete_by_player_id(self, player_id: str) -> None:
         """Удаляет всю имеющуюся статистику карт игрока перед обновлением кэша."""
-        stmt = delete(MapStat).where(MapStat.player_id == player_id)
-        await self.session.execute(stmt)
+        await self.session.execute(
+            delete(MapStat).where(MapStat.player_id == player_id)
+        )
 
-    async def bulk_create(self, stats: list[MapStat]) -> None:
+    async def bulk_create(self, instances: list[MapStat]) -> None:
         """Выполняет массовое добавление новых записей статистики в сессию."""
-        self.session.add_all(stats)
+        self.session.add_all(instances)

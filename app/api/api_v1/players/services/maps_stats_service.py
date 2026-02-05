@@ -36,21 +36,23 @@ class MapsStatsService:
         raw_stats = await self.faceit_client.get_player_maps_stats_raw(player_id)
         return await self._save_stats(player_id, raw_stats)
 
-    async def _save_stats(self, player_id: str, raw_stats: dict) -> list[MapStatsCreate]:
+    async def _save_stats(
+        self,
+        player_id: str,
+        raw_stats: dict,
+    ) -> list[MapStatsCreate]:
         """Сохраняет статистику в БД."""
         segments = [s for s in raw_stats.get("segments", []) if s.get("type") == "Map"]
         validated_schemas = [MapStatsCreate(**stat) for stat in segments]
 
-        async with self.session.begin_nested():
-            await self.repository.delete_by_player_id(player_id)
+        await self.repository.delete_by_player_id(player_id)
 
-            db_instances = [
-                MapStat(**schema.model_dump(), player_id=player_id)
-                for schema in validated_schemas
-            ]
+        db_instances = [
+            MapStat(**schema.model_dump(), player_id=player_id)
+            for schema in validated_schemas
+        ]
 
-            await self.repository.bulk_create(db_instances)
-        await self.session.commit()
+        await self.repository.bulk_create(db_instances)
         return validated_schemas
 
     def _is_stale(self, stats: list, max_age_minutes: int) -> bool:
