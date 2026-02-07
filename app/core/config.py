@@ -41,9 +41,16 @@ class DbSettings(BaseModel):
 
 class FaceitSettings(BaseModel):
     """Конфигурация для авторизации и запросов к Faceit Data API."""
+
     api_key: str = "placeholder"
     base_url: str = "https://open.faceit.com/data/v4"
     default_language: str = "ru"
+
+
+class PlayerSettings(BaseModel):
+    """Настройки бизнес-логики обработки данных игрока."""
+
+    min_matches_for_analysis: int = 10
 
 
 class Settings(BaseSettings):
@@ -61,12 +68,10 @@ class Settings(BaseSettings):
         extra="ignore",
         env_nested_delimiter="__",
     )
-
     api: ApiPrefix = ApiPrefix()
-
     db: DbSettings = DbSettings()
-
     faceit: FaceitSettings = FaceitSettings()
+    player: PlayerSettings = PlayerSettings()
 
 
 # Глобальный экземпляр настроек для использования в приложении

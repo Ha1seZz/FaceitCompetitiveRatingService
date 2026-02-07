@@ -1,12 +1,14 @@
 from app.domain.maps.models import MapStatSnapshot
+from app.schemas.maps_insight import MapsInsight
+from app.core.config import settings
 
 
-MIN_MATCHES = 10
-
-
-def analyze_maps(maps_stats: list[MapStatSnapshot]) -> dict | None:
-    """Выбирает лучшую и худшую карту по winrate при минимуме матчей MIN_MATCHES."""
-    valid_maps = [m for m in maps_stats if m.matches >= MIN_MATCHES]
+def analyze_maps(
+    maps_stats: list[MapStatSnapshot],
+    min_matches: int = settings.player.min_matches_for_analysis,
+) -> MapsInsight | None:
+    """Выбирает лучшую и худшую карту по winrate при минимуме матчей min_matches."""
+    valid_maps = [m for m in maps_stats if m.matches >= min_matches]
 
     if not valid_maps:
         return None

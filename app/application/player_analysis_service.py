@@ -6,7 +6,7 @@ from app.application.player_service import PlayerService
 from app.domain.maps.analysis import analyze_maps
 
 
-class PlayerAnalysisService:
+class PlayerAnalysisService:  # ← Use Case
 
     def __init__(
         self,
@@ -20,7 +20,8 @@ class PlayerAnalysisService:
 
     async def analyze(self, nickname: str) -> dict:
         """Возвращает инсайты по картам игрока (best/worst) или None, если данных мало."""
+        # Оркестрация 3х операций:
         player = await self.player_service.get_or_create_player(nickname=nickname)
         maps_stats = await self.maps_service.get_or_fetch_maps_stats(player.player_id)
-        maps_insight = analyze_maps(maps_stats)
+        maps_insight = analyze_maps(maps_stats)  # ← Domain
         return maps_insight
