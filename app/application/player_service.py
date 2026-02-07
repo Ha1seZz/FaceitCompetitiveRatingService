@@ -3,10 +3,10 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.api_v1.players.player_repository import PlayerRepository
-from app.api.api_v1.players.schemas import PlayerCreate
-from app.services.faceit.client import FaceitClient
-from app.core.models import Player
+from app.schemas import PlayerCreate
+from app.infrastructure.db.repositories.player_repository import PlayerRepository
+from app.infrastructure.faceit.client import FaceitClient
+from app.infrastructure.db.models import Player
 
 
 class PlayerService:
@@ -41,11 +41,12 @@ class PlayerService:
         return player
 
     async def get_or_create_player(self, nickname: str) -> Player:
-        player = await self.repository.get_by_nickname(nickname)
+        player = await self.repository.get_by_nickname(nickname)  # Ищем локально
 
         if player:
             return player
 
+        # Иначе, тянем Faceit
         player_data = await self.faceit_client.get_player(nickname)
 
         return await self.create_or_update_from_faceit(player_data=player_data)

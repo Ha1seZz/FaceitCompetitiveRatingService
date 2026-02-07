@@ -3,8 +3,8 @@
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.faceit.client import FaceitClient
-from app.services.faceit.dependencies import get_faceit_client
+from app.infrastructure.faceit.client import FaceitClient
+from app.infrastructure.faceit.dependencies import get_faceit_client
 from app.core.settings import db_helper
 
 from .repository import MatchRepository
@@ -30,7 +30,7 @@ async def get_current_match_details(
     match_id: str,
     faceit_client: FaceitClient = Depends(get_faceit_client),
 ) -> dict:
-    """Запрашивает данные матча напрямую из Faceit API и обрабатывает ошибки."""
+    """Получает матч из Faceit и гарантирует, что он завершен (FINISHED)."""
     match_data = await faceit_client.get_match(match_id=match_id)
 
     # Валидация жизненного цикла матча

@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING
 from sqlalchemy import DateTime, ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.models.mixins.id_int_pk import IdIntPkMixin
+from app.infrastructure.db.models.mixins.id_int_pk import IdIntPkMixin
 from app.core.settings.base import Base
 
 if TYPE_CHECKING:
-    from app.core.models.player import Player
+    from app.infrastructure.db.models import Player
 
 
 class MapStat(IdIntPkMixin, Base):
@@ -48,7 +48,7 @@ class MapStat(IdIntPkMixin, Base):
     )
     player: Mapped["Player"] = relationship(back_populates="map_stats")
 
-    updated_at: Mapped[datetime] = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(  # Время последнего обновления кеша
         DateTime(timezone=True),
         onupdate=func.now(),
         server_default=func.now(),

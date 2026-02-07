@@ -1,25 +1,21 @@
-"""Эндпоинты для управления данными игроков."""
+"""HTTP-эндпоинты игроков: список/профиль/карты/анализ/удаление."""
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app.api.api_v1.players.services.player_analysis_service import (
-    PlayerAnalysisService,
+from app.application import PlayerService, MapsStatsService, PlayerAnalysisService
+from app.core.config import settings
+from app.schemas import (
+    MapStatsResponse,
+    PlayerCSStats,
+    PlayerProfileDetails,
+    PlayerPublic,
 )
-from app.api.api_v1.players.services.maps_stats_service import MapsStatsService
-
-from .services.player_service import PlayerService
 from .dependencies import (
+    get_player_analysis_service,
     get_current_faceit_player,
     get_maps_stats_service,
     get_player_service,
 )
-from .schemas import (
-    MapStatsResponse,
-    PlayerProfileDetails,
-    PlayerCSStats,
-    PlayerPublic,
-)
-from app.core.config import settings
 
 
 router = APIRouter(
@@ -44,7 +40,7 @@ async def get_player_profile(
     player_service: PlayerService = Depends(get_player_service),
 ):
     """Получить профиль игрока и синхронизировать его с локальной базой данных."""
-    return await player_service.create_or_update_from_faceit(player_data)
+    return await player_service.create_or_update_from_faceit(player_data=player_data)
 
 
 @router.get("/cs-stats/{nickname}", response_model=PlayerCSStats)
@@ -60,8 +56,16 @@ async def get_player_maps_stats(
     maps_service: MapsStatsService = Depends(get_maps_stats_service),
 ):
     """Обеспечить наличие игрока в БД и получить его статистику по картам."""
-    player = await player_service.get_or_create_player(nickname)
+    player = await player_service.get_or_create_player(nickname=nickname)
     return await maps_service.get_or_fetch_maps_stats(player.player_id)
+
+
+@router.get("/analyze/{nickname}")
+async def analyze_player(
+    nickname: str,
+    analysis_service: PlayerAnalysisService = Depends(get_player_analysis_service),
+):
+    return await analysis_service.analyze(nickname=nickname)
 
 
 @router.delete("/{player_id}", status_code=status.HTTP_204_NO_CONTENT)

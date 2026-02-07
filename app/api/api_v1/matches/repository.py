@@ -4,8 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.models.match import Match
-from app.core.models.team import Team
+from app.infrastructure.db.models import Match, Team
 
 
 class MatchRepository:
@@ -28,7 +27,7 @@ class MatchRepository:
         return list(result.scalars().all())
 
     async def get_by_match_id(self, match_id: str) -> Match | None:
-        """Выполняет поиск конкретного матча по его идентификатору Faceit."""
+        """Возвращает матч по match_id вместе с командами и игроками (selectinload, без N+1)."""
         stmt = (
             select(Match)
             .where(Match.match_id == match_id)
@@ -56,9 +55,8 @@ class MatchRepository:
         Удаляет матч из базы данных по его match_id.
         Возвращает True, если матч был найден и удален, иначе False.
         """
-        async with self.session.begin():
-            match = await self.session.get(Match, match_id)
-            if match:
-                await self.session.delete(match)
-                return True
-            return False
+        match = await self.session.get(Match, match_id)
+        if match:
+            await self.session.delete(match)
+            return True
+        return False

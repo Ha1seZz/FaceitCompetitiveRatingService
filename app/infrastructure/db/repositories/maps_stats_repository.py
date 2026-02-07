@@ -3,7 +3,7 @@
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.models.map_stat import MapStat
+from app.infrastructure.db.models import MapStat
 
 
 class MapsStatsRepository:

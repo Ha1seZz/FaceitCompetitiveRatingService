@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.settings.base import Base
 
 if TYPE_CHECKING:
-    from app.core.models.map_stat import MapStat
+    from app.infrastructure.db.models import MapStat
 
 
 class Player(Base):

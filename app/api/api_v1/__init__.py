@@ -1,4 +1,4 @@
-"""Инициализация API версии 1."""
+"""Маршрутизатор API v1."""
 
 from fastapi import (
     APIRouter,

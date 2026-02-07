@@ -3,7 +3,7 @@
 from fastapi import Depends
 import httpx
 
-from app.services.faceit.client import FaceitClient
+from app.infrastructure.faceit.client import FaceitClient
 from app.core.config import settings
 
 

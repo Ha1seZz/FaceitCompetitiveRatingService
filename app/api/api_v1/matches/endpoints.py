@@ -24,7 +24,7 @@ async def get_matches(
     return await match_service.get_matches(limit=limit, offset=offset)
 
 
-@router.get("/{match_id}", response_model=MatchDetails)
+@router.get("/id/{match_id}", response_model=MatchDetails)
 async def get_match_details(
     match_data: dict = Depends(get_current_match_details),
     match_service: MatchService = Depends(get_match_service),
@@ -33,7 +33,7 @@ async def get_match_details(
     return await match_service.create_or_update_from_faceit(match_data)
 
 
-@router.get("/{region}", response_model=list[MatchDetails])
+@router.get("/region/{region}", response_model=list[MatchDetails])
 async def get_matches_by_region(
     region: str,
     match_service: MatchService = Depends(get_match_service),

@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.models.mixins.id_int_pk import IdIntPkMixin
+from app.infrastructure.db.models.mixins.id_int_pk import IdIntPkMixin
 from app.core.settings.base import Base
 
 if TYPE_CHECKING:
-    from app.core.models.match import Match
-    from app.core.models.match_player import MatchPlayer
+    from app.infrastructure.db.models import Match
+    from app.infrastructure.db.models import MatchPlayer
 
 
 class Team(IdIntPkMixin, Base):

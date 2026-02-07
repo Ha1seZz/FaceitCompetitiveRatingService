@@ -1,13 +1,14 @@
-"""Утилиты для управления подключениями к базе данных."""
+"""Инфраструктура БД.
 
-from asyncio import current_task
+Гарантирует паттерн "один HTTP-запрос -> одна сессия -> один commit/rollback".
+"""
+
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     create_async_engine,
     async_sessionmaker,
-    async_scoped_session,
 )
 
 from app.core.config import settings
@@ -23,30 +24,18 @@ class DatabaseHelper:
         self.engine = create_async_engine(url=url, echo=echo)
         self.session_factory = async_sessionmaker(
             bind=self.engine,
-            autoflush=False,
-            autocommit=False,
             expire_on_commit=False,
         )
-
-    def get_scoped_session(self):
-        """Создает сессию, привязанную к текущему контексту задачи asyncio."""
-        session = async_scoped_session(
-            session_factory=self.session_factory,
-            scopefunc=current_task,
-        )
-        return session
 
     async def session_dependency(self) -> AsyncGenerator[AsyncSession, None]:
         """Зависимость (dependency) для FastAPI, предоставляющая новую сессию на каждый запрос."""
         async with self.session_factory() as session:
-            yield session
-            await session.close()
-
-    async def scoped_session_dependency(self) -> AsyncGenerator[AsyncSession, None]:
-        """Зависимость для FastAPI, предоставляющая scoped сессию."""
-        session = self.get_scoped_session()
-        yield session
-        await session.remove()
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
 
 
 # Глобальный экземпляр помощника для использования в приложении

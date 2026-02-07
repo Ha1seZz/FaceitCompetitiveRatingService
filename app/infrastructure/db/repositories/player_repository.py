@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.models.player import Player
+from app.infrastructure.db.models import Player
 
 
 class PlayerRepository:
@@ -48,9 +48,8 @@ class PlayerRepository:
         Удаляет игрока из базы данных по его player_id.
         Возвращает True, если игрок был найден и удален, иначе False.
         """
-        async with self.session.begin():
-            player = await self.session.get(Player, player_id)
-            if player:
-                await self.session.delete(player)
-                return True
-            return False
+        player = await self.session.get(Player, player_id)
+        if player:
+            await self.session.delete(player)
+            return True
+        return False

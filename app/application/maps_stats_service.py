@@ -3,10 +3,10 @@
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.api_v1.players.maps_stats_repository import MapsStatsRepository
-from app.api.api_v1.players.schemas import MapStatsCreate, MapStatsResponse
-from app.services.faceit.client import FaceitClient
-from app.core.models import MapStat
+from app.schemas import MapStatsCreate, MapStatsResponse
+from app.infrastructure.db.repositories.maps_stats_repository import MapsStatsRepository
+from app.infrastructure.faceit.client import FaceitClient
+from app.infrastructure.db.models import MapStat
 
 
 class MapsStatsService:
@@ -61,6 +61,7 @@ class MapsStatsService:
         if not stats:
             return True
 
-        latest = max(s.updated_at for s in stats)  # Берём позднее время обновления
+        # Кэш считается свежим, если самый последний updated_at среди записей моложе max_age_minutes
+        latest = max(s.updated_at for s in stats)
         age = datetime.now(timezone.utc) - latest
         return age.total_seconds() > max_age_minutes * 60

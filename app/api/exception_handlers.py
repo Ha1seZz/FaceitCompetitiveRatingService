@@ -1,7 +1,8 @@
-"""Модуль глобальных обработчиков исключений."""
+"""Модуль регистрации глобальных обработчиков кастомных исключений."""
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+
 from app.core.exceptions import FaceitEntityNotFound, ExternalServiceUnavailable
 
 
@@ -28,7 +29,7 @@ async def external_service_unavailable_handler(
 
 
 def setup_exception_handlers(app: FastAPI) -> None:
-    """Регистрирует все обработчики исключений в приложении."""
+    """Регистрирует все обработчики кастомных исключений в приложении."""
     app.add_exception_handler(
         FaceitEntityNotFound,
         faceit_entity_not_found_handler,

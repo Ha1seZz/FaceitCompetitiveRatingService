@@ -71,8 +71,8 @@ class MatchDetails(BaseModel):
         # Трансформация команд
         raw_teams = data.get("teams", {})
         teams_list = []
-        for faction_key in ["faction1", "faction2"]:
-            t = raw_teams.get(faction_key, {}) if "faction1" in raw_teams else t
+        for faction_key in ("faction1", "faction2"):
+            t = raw_teams.get(faction_key, {})
             if not t:
                 continue
 
