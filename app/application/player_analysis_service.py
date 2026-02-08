@@ -1,6 +1,6 @@
 """Use-case анализа игрока."""
 
-from app.schemas.maps_insight import MapsInsight
+from app.schemas.maps_insight import MapInsightItem, MapsInsight
 from app.application.maps_stats_service import MapsStatsService
 from app.application.player_service import PlayerService
 from app.domain.maps.analysis import analyze_maps
@@ -21,5 +21,16 @@ class PlayerAnalysisService:
         """Возвращает инсайты по картам игрока (best/worst)."""
         player = await self.player_service.get_or_create_player(nickname=nickname)
         maps_stats = await self.maps_service.get_or_fetch_maps_stats(player.player_id)
-        maps_insight = analyze_maps(maps_stats)
-        return maps_insight
+        insight = analyze_maps(maps_stats)
+        return MapsInsight(
+            best=MapInsightItem(
+                map=insight.best.map_name,
+                winrate=insight.best.winrate,
+                matches=insight.best.matches,
+            ),
+            worst=MapInsightItem(
+                map=insight.worst.map_name,
+                winrate=insight.worst.winrate,
+                matches=insight.worst.matches,
+            ),
+        )
