@@ -23,12 +23,12 @@ def analyze_maps(
 
     return MapsInsightSnapshot(
         best=MapInsightSnapshot(
-            map=best.map_name,
+            map_name=best.map_name,
             winrate=round(best.winrate),
             matches=best.matches,
         ),
         worst=MapInsightSnapshot(
-            map=worst.map_name,
+            map_name=worst.map_name,
             winrate=round(worst.winrate),
             matches=worst.matches,
         ),
