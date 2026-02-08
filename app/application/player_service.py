@@ -1,7 +1,6 @@
 """Сервис для управления бизнес-логикой игроков."""
 
 from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas import PlayerCreate
 from app.infrastructure.db.repositories.player_repository import PlayerRepository

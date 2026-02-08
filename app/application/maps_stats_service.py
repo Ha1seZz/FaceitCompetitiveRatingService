@@ -1,7 +1,6 @@
-"""Сервис для работы со статистикой по картам."""
+"""Сервис кэширования и выдачи статистики игрока по картам."""
 
 from datetime import datetime, timezone
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas import MapStatsCreate, MapStatsResponse
 from app.infrastructure.db.repositories.maps_stats_repository import MapsStatsRepository
