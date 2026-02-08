@@ -1,5 +1,5 @@
+from app.schemas import MapInsightItem, MapsInsight
 from app.domain.maps.models import MapStatSnapshot
-from app.schemas.maps_insight import MapsInsight
 from app.core.config import settings
 
 
@@ -16,15 +16,15 @@ def analyze_maps(
     best = max(valid_maps, key=lambda m: (m.winrate, m.matches))
     worst = min(valid_maps, key=lambda m: (m.winrate, -m.matches))
 
-    return {
-        "best": {
-            "map": best.map_name,
-            "winrate": round(best.winrate),
-            "matches": best.matches,
-        },
-        "worst": {
-            "map": worst.map_name,
-            "winrate": round(worst.winrate),
-            "matches": worst.matches,
-        },
-    }
+    return MapsInsight(
+        best=MapInsightItem(
+            map=best.map_name,
+            winrate=round(best.winrate),
+            matches=best.matches
+        ),
+        worst=MapInsightItem(
+            map=worst.map_name,
+            winrate=round(worst.winrate),
+            matches=worst.matches
+        )
+    )
