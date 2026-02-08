@@ -11,11 +11,9 @@ class PlayerAnalysisService:  # ← Use Case
 
     def __init__(
         self,
-        faceit_client: FaceitClient,
         maps_service: MapsStatsService,
         player_service: PlayerService,
     ):
-        self.faceit_client = faceit_client
         self.maps_service = maps_service
         self.player_service = player_service
 

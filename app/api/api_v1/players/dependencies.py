@@ -50,13 +50,11 @@ async def get_maps_stats_service(
 
 
 async def get_player_analysis_service(
-    faceit_client: FaceitClient = Depends(get_faceit_client),
     maps_service: MapsStatsService = Depends(get_maps_stats_service),
     player_service: PlayerService = Depends(get_player_service),
 ) -> PlayerAnalysisService:
     """Собирает use-case анализа игрока из зависимостей (Faceit + карты + игрок)."""
     return PlayerAnalysisService(
-        faceit_client=faceit_client,
         maps_service=maps_service,
         player_service=player_service,
     )
