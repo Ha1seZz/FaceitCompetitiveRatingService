@@ -5,9 +5,10 @@ from fastapi import APIRouter, Depends, Query, status
 from app.application import PlayerService, MapsStatsService, PlayerAnalysisService
 from app.core.config import settings
 from app.schemas import (
+    MapsInsight,
     MapStatsResponse,
-    PlayerCSStats,
     PlayerProfileDetails,
+    PlayerCSStats,
     PlayerPublic,
 )
 from .dependencies import (
@@ -60,7 +61,7 @@ async def get_player_maps_stats(
     return await maps_service.get_or_fetch_maps_stats(player.player_id)
 
 
-@router.get("/analyze/{nickname}")
+@router.get("/analyze/{nickname}", response_model=MapsInsight)
 async def analyze_player(
     nickname: str,
     analysis_service: PlayerAnalysisService = Depends(get_player_analysis_service),

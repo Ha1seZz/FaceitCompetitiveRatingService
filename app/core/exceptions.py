@@ -21,3 +21,10 @@ class ExternalServiceUnavailable(ApplicationException):
 
     def __init__(self, message: str = "External service is unavailable"):
         super().__init__(message)
+
+
+class InsufficientDataError(ApplicationException):
+    """Исключение, выбрасываемое, когда данных недостаточно для выполнения анализа."""
+
+    def __init__(self, message: str = "Not enough data for analysis"):
+        super().__init__(message)

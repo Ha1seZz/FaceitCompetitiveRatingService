@@ -3,7 +3,11 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from app.core.exceptions import FaceitEntityNotFound, ExternalServiceUnavailable
+from app.core.exceptions import (
+    FaceitEntityNotFound,
+    ExternalServiceUnavailable,
+    InsufficientDataError,
+)
 
 
 async def faceit_entity_not_found_handler(
@@ -28,6 +32,16 @@ async def external_service_unavailable_handler(
     )
 
 
+async def insufficient_data_handler(
+    request: Request,
+    exc: InsufficientDataError,
+):
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content={"detail": exc.message},
+    )
+
+
 def setup_exception_handlers(app: FastAPI) -> None:
     """Регистрирует все обработчики кастомных исключений в приложении."""
     app.add_exception_handler(
@@ -37,4 +51,8 @@ def setup_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         ExternalServiceUnavailable,
         external_service_unavailable_handler,
+    )
+    app.add_exception_handler(
+        InsufficientDataError,
+        insufficient_data_handler,
     )
