@@ -1,5 +1,6 @@
-from app.schemas import MapInsightItem, MapsInsight
-from app.domain.maps.models import MapStatSnapshot
+"""Чистая бизнес-логика анализа карт игрока."""
+
+from .models import MapStatSnapshot, MapInsightSnapshot, MapsInsightSnapshot
 
 from app.core.exceptions import InsufficientDataError
 from app.core.config import settings
@@ -8,8 +9,8 @@ from app.core.config import settings
 def analyze_maps(
     maps_stats: list[MapStatSnapshot],
     min_matches: int = settings.player.min_matches_for_analysis,
-) -> MapsInsight | None:
-    """Выбирает лучшую и худшую карту по winrate при минимуме матчей min_matches."""
+) -> MapsInsightSnapshot | None:
+    """Определяет лучшую и худшую карту игрока на основе winrate при минимуме матчей min_matches."""
     valid_maps = [m for m in maps_stats if m.matches >= min_matches]
 
     if not valid_maps:
@@ -20,13 +21,13 @@ def analyze_maps(
     best = max(valid_maps, key=lambda m: (m.winrate, m.matches))
     worst = min(valid_maps, key=lambda m: (m.winrate, -m.matches))
 
-    return MapsInsight(
-        best=MapInsightItem(
+    return MapsInsightSnapshot(
+        best=MapInsightSnapshot(
             map=best.map_name,
             winrate=round(best.winrate),
             matches=best.matches,
         ),
-        worst=MapInsightItem(
+        worst=MapInsightSnapshot(
             map=worst.map_name,
             winrate=round(worst.winrate),
             matches=worst.matches,
