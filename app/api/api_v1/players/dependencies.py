@@ -37,13 +37,11 @@ async def get_maps_stats_repository(
 
 
 async def get_maps_stats_service(
-    session: AsyncSession = Depends(db_helper.session_dependency),
     repository: MapsStatsRepository = Depends(get_maps_stats_repository),
     faceit_client: FaceitClient = Depends(get_faceit_client),
 ) -> MapsStatsService:
     """Создает экземпляр сервиса статистики по картам."""
     return MapsStatsService(
-        session=session,
         repository=repository,
         faceit_client=faceit_client,
     )

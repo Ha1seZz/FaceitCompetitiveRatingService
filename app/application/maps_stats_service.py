@@ -14,11 +14,9 @@ class MapsStatsService:
 
     def __init__(
         self,
-        session: AsyncSession,
         repository: MapsStatsRepository,
         faceit_client: FaceitClient,
     ):
-        self.session = session
         self.repository = repository
         self.faceit_client = faceit_client
 
