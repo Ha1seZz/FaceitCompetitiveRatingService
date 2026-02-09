@@ -66,7 +66,7 @@ async def analyze_player(
     nickname: str,
     analysis_service: PlayerAnalysisService = Depends(get_player_analysis_service),
 ):
-    """Выполняет комплексный анализ игрока для выявления сильных и слабых карт."""
+    """Выполняет комплексный анализ для выявления сильной и слабой карты игрока."""
     return await analysis_service.analyze(nickname=nickname)
 
 

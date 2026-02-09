@@ -14,7 +14,16 @@ class MapStatSnapshot:
 
 @dataclass(frozen=True)
 class MapInsightSnapshot:
-    """Результат анализа для одной карты (best или worst)."""
+    """Результат базового инсайта по карте (best/worst)."""
+
+    map_name: str
+    winrate: int
+    matches: int
+
+
+@dataclass(frozen=True)
+class MapReliableSnapshot:
+    """Результат анализа 'надёжной' карты."""
 
     map_name: str
     winrate: int
@@ -27,3 +36,4 @@ class MapsInsightSnapshot:
 
     best: MapInsightSnapshot
     worst: MapInsightSnapshot
+    reliable: MapReliableSnapshot

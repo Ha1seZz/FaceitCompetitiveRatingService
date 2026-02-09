@@ -1,10 +1,11 @@
 """Use-case анализа игрока."""
 
-from app.schemas.maps_insight import MapInsightItem, MapsInsight
+from app.schemas.maps_insight import MapInsightItem, MapReliableInsight, MapsInsight
 from app.application.maps_stats_service import MapsStatsService
 from app.application.player_service import PlayerService
 from app.domain.maps.models import MapStatSnapshot
 from app.domain.maps.analysis import analyze_maps
+from app.core.config import settings
 
 
 class PlayerAnalysisService:
@@ -31,7 +32,10 @@ class PlayerAnalysisService:
             )
             for m in maps_stats
         ]
-        insight = analyze_maps(snapshots)
+        insight = analyze_maps(
+            snapshots,
+            settings.player.min_matches_for_analysis,
+        )
 
         return MapsInsight(
             best=MapInsightItem(
@@ -43,5 +47,10 @@ class PlayerAnalysisService:
                 map=insight.worst.map_name,
                 winrate=insight.worst.winrate,
                 matches=insight.worst.matches,
+            ),
+            reliable=MapReliableInsight(
+                map=insight.reliable.map_name,
+                winrate=insight.reliable.winrate,
+                matches=insight.reliable.matches,
             ),
         )

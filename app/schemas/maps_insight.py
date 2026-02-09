@@ -11,8 +11,17 @@ class MapInsightItem(BaseModel):
     matches: int
 
 
+class MapReliableInsight(BaseModel):
+    """DTO 'надёжной' карты игрока."""
+
+    map: str
+    winrate: int
+    matches: int
+
+
 class MapsInsight(BaseModel):
     """DTO ответа анализа карт игрока."""
 
     best: MapInsightItem
     worst: MapInsightItem
+    reliable: MapReliableInsight
