@@ -2,7 +2,12 @@
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app.application import PlayerService, MapsStatsService, PlayerAnalysisService
+from app.application import (
+    PlayerService,
+    MapsStatsService,
+    PlayerAnalysisService,
+    TimeAnalysisService,
+)
 from app.core.config import settings
 from app.schemas import (
     MapsInsight,
@@ -10,12 +15,14 @@ from app.schemas import (
     PlayerProfileDetails,
     PlayerCSStats,
     PlayerPublic,
+    WhenToPlayInsight,
 )
 from .dependencies import (
     get_player_analysis_service,
     get_current_faceit_player,
     get_maps_stats_service,
     get_player_service,
+    get_time_analysis_service,
 )
 
 
@@ -68,6 +75,15 @@ async def analyze_player(
 ):
     """Выполняет комплексный анализ для выявления сильной и слабой карты игрока."""
     return await analysis_service.analyze(nickname=nickname)
+
+
+@router.get("/when-to-play/{nickname}", response_model=WhenToPlayInsight)
+async def when_to_play(
+    nickname: str,
+    time_analysis_service: TimeAnalysisService = Depends(get_time_analysis_service),
+):
+    """Возвращает рекомендацию "когда лучше играть" для указанного игрока."""
+    return await time_analysis_service.analyze(nickname)
 
 
 @router.delete("/{player_id}", status_code=status.HTTP_204_NO_CONTENT)

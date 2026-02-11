@@ -38,6 +38,7 @@ class PlayerService:
         return player
 
     async def get_or_create_player(self, nickname: str) -> Player:
+        """Возвращает игрока из локальной БД, а если его нет — подтягивает из Faceit и сохраняет."""
         player = await self.repository.get_by_nickname(nickname)  # Ищем локально
 
         if player:

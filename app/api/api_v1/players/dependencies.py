@@ -3,7 +3,12 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
 
-from app.application import MapsStatsService, PlayerService, PlayerAnalysisService
+from app.application import (
+    MapsStatsService,
+    PlayerService,
+    PlayerAnalysisService,
+    TimeAnalysisService,
+)
 from app.infrastructure.db.repositories.maps_stats_repository import MapsStatsRepository
 from app.infrastructure.db.repositories.player_repository import PlayerRepository
 from app.infrastructure.faceit.dependencies import get_faceit_client
@@ -51,10 +56,21 @@ async def get_player_analysis_service(
     maps_service: MapsStatsService = Depends(get_maps_stats_service),
     player_service: PlayerService = Depends(get_player_service),
 ) -> PlayerAnalysisService:
-    """Собирает use-case анализа игрока из зависимостей (Faceit + карты + игрок)."""
+    """Dependency-фабрика для PlayerAnalysisService."""
     return PlayerAnalysisService(
         maps_service=maps_service,
         player_service=player_service,
+    )
+
+
+def get_time_analysis_service(
+    player_service: PlayerService = Depends(get_player_service),
+    faceit_client: FaceitClient = Depends(get_faceit_client),
+):
+    """Dependency-фабрика для TimeAnalysisService."""
+    return TimeAnalysisService(
+        player_service=player_service,
+        faceit_client=faceit_client,
     )
 
 

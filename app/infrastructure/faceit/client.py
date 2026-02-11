@@ -46,3 +46,35 @@ class FaceitClient:
         """Запрашивает необработанную статистику игрока по каждой карте."""
         response = await self.client.get(f"/players/{player_id}/stats/{game_id}")
         return await self._handle_response(response, "Stats")
+
+    async def get_player_match_history(
+        self,
+        player_id: str,
+        game: str = "cs2",
+        max_matches: int = 1000,
+    ) -> list[dict]:
+        """Загружает историю матчей игрока из Faceit."""
+        all_matches: list[dict] = []
+        limit = 100
+        offset = 0
+
+        while offset < max_matches:
+            response = await self.client.get(
+                f"/players/{player_id}/history",
+                params={"game": game, "offset": offset, "limit": limit},
+            )
+
+            data = await self._handle_response(response, "Match history")
+            items = data.get("items", [])
+
+            if not items:
+                break
+
+            all_matches.extend(items)
+
+            if len(items) < limit:
+                break
+
+            offset += limit
+
+        return all_matches
