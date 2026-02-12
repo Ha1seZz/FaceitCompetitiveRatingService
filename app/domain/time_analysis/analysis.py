@@ -52,7 +52,7 @@ def analyze_play_time(
     snapshots: list[MatchTimeSnapshot],
     window_size_hours: int = 3,
     min_matches_in_window: int = 30,
-    min_valid_matches_in_window: int = 10,
+    min_valid_matches_in_window: int = 20,
 ) -> WhenToPlaySnapshot:
     """Находит лучшее окно по времени суток для игры."""
     if window_size_hours <= 0 or window_size_hours > 24:
