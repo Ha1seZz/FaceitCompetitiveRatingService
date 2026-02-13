@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from app.schemas import MapStatsCreate, MapStatsResponse
-from app.infrastructure.db.repositories.maps_stats_repository import MapsStatsRepository
+from app.infrastructure.db.repositories import MapsStatsRepository
 from app.infrastructure.faceit.client import FaceitClient
 from app.infrastructure.db.models import MapStat
 
@@ -53,7 +53,7 @@ class MapsStatsService:
         await self.repository.bulk_create(db_instances)
         return db_instances
 
-    def _is_stale(self, stats: list, max_age_minutes: int) -> bool:
+    def _is_stale(self, stats: list[MapStat], max_age_minutes: int) -> bool:
         """Проверяет устарел ли кеш."""
         if not stats:
             return True

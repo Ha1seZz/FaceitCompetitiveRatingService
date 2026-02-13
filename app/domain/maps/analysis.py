@@ -44,7 +44,7 @@ def _find_reliable_map(
 ) -> MapReliableSnapshot:
     """
     Находит карту, где игрок стабильно хорош.
-    Формула: winrate * log10(matches + 1)
+    Формула: winrate * log10(map.matches + 1)
     """
 
     def score(m: MapStatSnapshot) -> float:

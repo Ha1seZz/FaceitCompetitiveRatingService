@@ -1,5 +1,6 @@
 """Конфигурация приложения."""
 
+from datetime import timedelta
 from pathlib import Path
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -53,6 +54,20 @@ class PlayerSettings(BaseModel):
     min_matches_for_analysis: int = 10
 
 
+class MatchHistorySettings(BaseModel):
+    """Настройки кэширования истории матчей Faceit."""
+
+    limit: int = 1000
+    ttl_seconds: int = 86400  # 24h
+    refresh_timeout: int = 15
+    max_retries: int = 1
+
+    @property
+    def ttl(self) -> timedelta:
+        """TTL в формате timedelta."""
+        return timedelta(seconds=self.ttl_seconds)
+
+
 class Settings(BaseSettings):
     """
     Глобальный контейнер настроек приложения.
@@ -72,6 +87,7 @@ class Settings(BaseSettings):
     db: DbSettings = DbSettings()
     faceit: FaceitSettings = FaceitSettings()
     player: PlayerSettings = PlayerSettings()
+    match_history: MatchHistorySettings = MatchHistorySettings()
 
 
 # Глобальный экземпляр настроек для использования в приложении

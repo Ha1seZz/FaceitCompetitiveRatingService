@@ -36,6 +36,7 @@ async def insufficient_data_handler(
     request: Request,
     exc: InsufficientDataError,
 ):
+    """Обработка ситуации, когда данных недостаточно для аналитики (422)."""
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content={"detail": exc.message},

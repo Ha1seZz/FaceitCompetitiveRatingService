@@ -1,7 +1,8 @@
 """Use-case: анализ "когда лучше играть" по истории матчей игрока."""
 
-from app.domain.time_analysis.analysis import analyze_play_time, build_time_snapshot
-from app.infrastructure.faceit.client import FaceitClient
+from app.domain.time_analysis.models import MatchTimeSnapshot
+from app.domain.time_analysis.analysis import analyze_play_time
+from app.application.match_history_service import MatchHistoryService
 from app.application.player_service import PlayerService
 from app.schemas import WhenToPlayInsight
 
@@ -12,25 +13,25 @@ class TimeAnalysisService:
     def __init__(
         self,
         player_service: PlayerService,
-        faceit_client: FaceitClient,
+        match_history_service: MatchHistoryService,
     ):
         self.player_service = player_service
-        self.faceit_client = faceit_client
+        self.match_history_service = match_history_service
 
     async def analyze(self, nickname) -> WhenToPlayInsight:
-        """Выполняет анализ и возвращает рекомендованное временное окно игры."""
+        """Возвращает рекомендацию 'когда лучше играть' по истории матчей (окно в UTC)."""
         player = await self.player_service.get_or_create_player(nickname=nickname)
-        matches = await self.faceit_client.get_player_match_history(player.player_id)
+        rows = await self.match_history_service.get_or_fetch_match_history(
+            player.player_id
+        )
 
-        snapshots = []
-        skipped_invalid = 0
-
-        for match in matches:
-            try:
-                snapshots.append(build_time_snapshot(match, player.player_id))
-            except ValueError:
-                # Пропускаем матчи без finished_at или с некорректными полями времени
-                skipped_invalid += 1
+        snapshots = [
+            MatchTimeSnapshot(
+                finished_at_utc=row.finished_at_utc,
+                is_win=row.is_win,
+            )
+            for row in rows
+        ]
 
         insight = analyze_play_time(snapshots).best_window
 

@@ -20,7 +20,7 @@ class PlayerAnalysisService:
         self.player_service = player_service
 
     async def analyze(self, nickname: str) -> MapsInsight:
-        """Возвращает инсайты по картам игрока (best/worst)."""
+        """Возвращает инсайты по картам игрока (best/worst/reliable)."""
         player = await self.player_service.get_or_create_player(nickname=nickname)
         maps_stats = await self.maps_service.get_or_fetch_maps_stats(player.player_id)
 

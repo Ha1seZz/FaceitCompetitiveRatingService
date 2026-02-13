@@ -8,7 +8,7 @@ from .models import MatchTimeSnapshot, TimeWindowSnapshot, WhenToPlaySnapshot
 from app.core.exceptions import InsufficientDataError
 
 
-def get_player_faction(match: dict[str, Any], player_id: str) -> str:
+def find_player_faction(match: dict[str, Any], player_id: str) -> str:
     """Определяет, в какой фракции (faction1/faction2) находится игрок в конкретном матче."""
     teams: dict = match.get("teams", {})
 
@@ -22,14 +22,14 @@ def get_player_faction(match: dict[str, Any], player_id: str) -> str:
     raise ValueError(f"Player {player_id} not found in match teams")
 
 
-def compute_is_win(match: dict[str, Any], player_id: str) -> bool | None:
+def compute_match_result(match: dict[str, Any], player_id: str) -> bool | None:
     """Вычисляет победу игрока в матче."""
     winner_faction = (match.get("results") or {}).get("winner")  # 'faction1'|'faction2'
     if winner_faction not in ("faction1", "faction2"):
         return None
 
     try:
-        player_faction = get_player_faction(match, player_id)
+        player_faction = find_player_faction(match, player_id)
     except ValueError:
         return None
 
@@ -43,7 +43,7 @@ def build_time_snapshot(match: dict[str, Any], player_id: str) -> MatchTimeSnaps
         raise ValueError("Match has no valid finished_at timestamp")
 
     finished_at_utc = datetime.fromtimestamp(finished_at_ts, tz=timezone.utc)
-    is_win = compute_is_win(match, player_id)
+    is_win = compute_match_result(match, player_id)
 
     return MatchTimeSnapshot(finished_at_utc=finished_at_utc, is_win=is_win)
 

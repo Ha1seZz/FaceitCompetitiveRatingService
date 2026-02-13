@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.settings.base import Base
 
 if TYPE_CHECKING:
-    from app.infrastructure.db.models import MapStat
+    from app.infrastructure.db.models import MapStat, PlayerMatchHistory
 
 
 class Player(Base):
@@ -31,6 +31,17 @@ class Player(Base):
     faceit_elo: Mapped[int] = mapped_column(nullable=False, index=True)
 
     map_stats: Mapped[list["MapStat"]] = relationship(
+        back_populates="player",
+        cascade="all, delete-orphan",
+    )
+
+    match_history_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+
+    match_history: Mapped[list["PlayerMatchHistory"]] = relationship(
         back_populates="player",
         cascade="all, delete-orphan",
     )
