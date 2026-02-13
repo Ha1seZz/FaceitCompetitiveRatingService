@@ -8,9 +8,13 @@ from app.application import (
     PlayerService,
     PlayerAnalysisService,
     TimeAnalysisService,
+    MatchHistoryService,
 )
-from app.infrastructure.db.repositories.maps_stats_repository import MapsStatsRepository
-from app.infrastructure.db.repositories.player_repository import PlayerRepository
+from app.infrastructure.db.repositories import (
+    MapsStatsRepository,
+    MatchHistoryRepository,
+    PlayerRepository,
+)
 from app.infrastructure.faceit.dependencies import get_faceit_client
 from app.infrastructure.faceit.client import FaceitClient
 from app.core.settings import db_helper
@@ -63,14 +67,34 @@ async def get_player_analysis_service(
     )
 
 
+def get_match_history_repository(
+    session: AsyncSession = Depends(db_helper.session_dependency),
+) -> MatchHistoryRepository:
+    """Dependency-фабрика для репозитория кэша истории матчей игрока."""
+    return MatchHistoryRepository(session=session)
+
+
+def get_match_history_service(
+    match_history_repo: MatchHistoryRepository = Depends(get_match_history_repository),
+    player_repo: PlayerRepository = Depends(get_player_repository),
+    faceit_client: FaceitClient = Depends(get_faceit_client),
+) -> MatchHistoryService:
+    """Dependency-фабрика для сервиса кэширования истории матчей игрока."""
+    return MatchHistoryService(
+        match_history_repo=match_history_repo,
+        player_repo=player_repo,
+        faceit_client=faceit_client,
+    )
+
+
 def get_time_analysis_service(
     player_service: PlayerService = Depends(get_player_service),
-    faceit_client: FaceitClient = Depends(get_faceit_client),
-):
+    match_history_service: MatchHistoryService = Depends(get_match_history_service),
+) -> TimeAnalysisService:
     """Dependency-фабрика для TimeAnalysisService."""
     return TimeAnalysisService(
         player_service=player_service,
-        faceit_client=faceit_client,
+        match_history_service=match_history_service,
     )
 
 

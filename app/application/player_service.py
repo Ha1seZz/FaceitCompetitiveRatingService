@@ -3,7 +3,7 @@
 from fastapi import HTTPException, status
 
 from app.schemas import PlayerCreate
-from app.infrastructure.db.repositories.player_repository import PlayerRepository
+from app.infrastructure.db.repositories import PlayerRepository
 from app.infrastructure.faceit.client import FaceitClient
 from app.infrastructure.db.models import Player
 

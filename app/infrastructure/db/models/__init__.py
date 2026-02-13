@@ -12,6 +12,7 @@ __all__ = (
     "Team",
     "MatchPlayer",
     "MapStat",
+    "PlayerMatchHistory",
 )
 
 from app.core.settings.base import Base
@@ -20,3 +21,4 @@ from .match import Match
 from .team import Team
 from .match_player import MatchPlayer
 from .map_stat import MapStat
+from .player_match_history import PlayerMatchHistory
