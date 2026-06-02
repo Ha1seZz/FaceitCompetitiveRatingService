@@ -25,25 +25,25 @@ class MatchHistoryService:
         self.player_repo = player_repo
         self.faceit_client = faceit_client
 
-    async def get_or_fetch_match_history(self, player_id: str) -> list[MatchHistoryRow]:
+    async def get_or_fetch_match_history(self, player_id: str, match_limit: int = None) -> list[MatchHistoryRow]:
         """Возвращает историю матчей игрока."""
         updated_at = await self.player_repo.get_match_history_updated_at(player_id)
 
         if not self._is_cache_stale(updated_at):
             return await self.match_history_repo.get_last(
                 player_id=player_id,
-                limit=settings.match_history.limit,
+                limit=match_limit or settings.match_history.limit,
             )
         try:
             raw_matches = await self.faceit_client.get_player_match_history(
                 player_id,
-                max_matches=settings.match_history.limit,
+                max_matches=match_limit or settings.match_history.limit,
             )
         except(ExternalServiceUnavailable, httpx.HTTPError):
            # Фолбэк: возвращаем последнее сохранённое, даже если кэш старый
             return await self.match_history_repo.get_last(
                 player_id=player_id,
-                limit=settings.match_history.limit,
+                limit=match_limit or settings.match_history.limit,
             )
 
         rows: list[MatchHistoryRow] = []

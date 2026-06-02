@@ -38,7 +38,7 @@ class PlayerProfileDetails(BaseModel):
         return data
 
 
-class PlayerCSStats(BaseModel):
+class PlayerCSRating(BaseModel):
     """Схема игровой статистики Counter-Strike."""
 
     region: str
@@ -60,13 +60,13 @@ class PlayerCSStats(BaseModel):
         return data
 
 
-class PlayerCreate(PlayerCSStats, PlayerProfileDetails):
+class PlayerCreate(PlayerCSRating, PlayerProfileDetails):
     """Объединенная схема для создания или обновления игрока в базе данных."""
 
     pass
 
 
-class PlayerPublic(PlayerCSStats, PlayerProfileDetails):
+class PlayerPublic(PlayerCSRating, PlayerProfileDetails):
     """Публичная схема для отображения полной информации об игроке в API."""
 
     pass

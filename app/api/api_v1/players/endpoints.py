@@ -13,10 +13,9 @@ from app.schemas import (
     MapsInsight,
     MapStatsResponse,
     PlayerProfileDetails,
-    PlayerCSStats,
+    PlayerCSRating,
     PlayerPublic,
     WhenToPlayInsight,
-    AnalyzeLast5MatchesResponse
 )
 from .dependencies import (
     get_player_analysis_service,
@@ -52,7 +51,7 @@ async def get_player_profile(
     return await player_service.create_or_update_from_faceit(player_data=player_data)
 
 
-@router.get("/elo-points/{nickname}", response_model=PlayerCSStats)
+@router.get("/elo-points/{nickname}", response_model=PlayerCSRating)
 async def get_player_elo_points(player: dict = Depends(get_current_faceit_player)):
     """Получить количество elo и уровень мастерства игрока."""
     return player
