@@ -9,6 +9,12 @@ from app.application import (
     PlayerAnalysisService,
     TimeAnalysisService,
     MatchHistoryService,
+    MatchHistoryService,
+)
+from app.infrastructure.db.repositories import (
+    MapsStatsRepository,
+    MatchHistoryRepository,
+    PlayerRepository,
 )
 from app.infrastructure.db.repositories import (
     MapsStatsRepository,
@@ -94,6 +100,7 @@ async def get_time_analysis_service(
     """Dependency-фабрика для TimeAnalysisService."""
     return TimeAnalysisService(
         player_service=player_service,
+        match_history_service=match_history_service,
         match_history_service=match_history_service,
     )
 
