@@ -16,6 +16,7 @@ from app.schemas import (
     PlayerCSStats,
     PlayerPublic,
     WhenToPlayInsight,
+    AnalyzeLast5MatchesResponse
 )
 from .dependencies import (
     get_player_analysis_service,
@@ -51,9 +52,9 @@ async def get_player_profile(
     return await player_service.create_or_update_from_faceit(player_data=player_data)
 
 
-@router.get("/cs-stats/{nickname}", response_model=PlayerCSStats)
-async def get_player_cs_stats(player: dict = Depends(get_current_faceit_player)):
-    """Получить только Counter-Strike статистику игрока."""
+@router.get("/elo-points/{nickname}", response_model=PlayerCSStats)
+async def get_player_elo_points(player: dict = Depends(get_current_faceit_player)):
+    """Получить количество elo и уровень мастерства игрока."""
     return player
 
 
