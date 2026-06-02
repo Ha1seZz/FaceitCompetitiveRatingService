@@ -101,7 +101,6 @@ async def get_time_analysis_service(
     return TimeAnalysisService(
         player_service=player_service,
         match_history_service=match_history_service,
-        match_history_service=match_history_service,
     )
 
 
