@@ -2,10 +2,14 @@
 
 from datetime import datetime, timezone
 
-from app.schemas import MapStatsCreate, MapStatsResponse
+from app.schemas import MapStatsCreate, MapStatsResponse, MapsInsight
+from app.schemas.maps_insight import MapInsightItem, MapReliableInsight
 from app.infrastructure.db.repositories import MapsStatsRepository
 from app.infrastructure.faceit.client import FaceitClient
 from app.infrastructure.db.models import MapStat
+from app.domain.maps.models import MapStatSnapshot
+from app.domain.maps.analysis import analyze_maps
+from app.core.config import settings
 
 
 class MapsStatsService:
@@ -52,6 +56,41 @@ class MapsStatsService:
 
         await self.repository.bulk_create(db_instances)
         return db_instances
+
+    async def analyze(self, player_id: str) -> MapsInsight:
+        """Анализирует карты игрока (best/worst/reliable)."""
+        maps_stats = await self.get_or_fetch_maps_stats(player_id)
+
+        snapshots = [
+            MapStatSnapshot(
+                map_name=m.map_name,
+                winrate=m.winrate,
+                matches=m.matches,
+            )
+            for m in maps_stats
+        ]
+        insight = analyze_maps(
+            snapshots,
+            settings.player.min_matches_for_analysis,
+        )
+
+        return MapsInsight(
+            best=MapInsightItem(
+                map=insight.best.map_name,
+                winrate=insight.best.winrate,
+                matches=insight.best.matches,
+            ),
+            worst=MapInsightItem(
+                map=insight.worst.map_name,
+                winrate=insight.worst.winrate,
+                matches=insight.worst.matches,
+            ),
+            reliable=MapReliableInsight(
+                map=insight.reliable.map_name,
+                winrate=insight.reliable.winrate,
+                matches=insight.reliable.matches,
+            ),
+        )
 
     def _is_stale(self, stats: list[MapStat], max_age_minutes: int) -> bool:
         """Проверяет устарел ли кеш."""

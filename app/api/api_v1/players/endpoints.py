@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, Query, status
 from app.application import (
     PlayerService,
     MapsStatsService,
-    PlayerAnalysisService,
     TimeAnalysisService,
 )
 from app.core.config import settings
@@ -18,13 +17,11 @@ from app.schemas import (
     WhenToPlayInsight,
 )
 from .dependencies import (
-    get_player_analysis_service,
     get_current_faceit_player,
     get_maps_stats_service,
     get_player_service,
     get_time_analysis_service,
 )
-
 
 router = APIRouter(
     prefix=settings.api.v1.players,  # /players
@@ -71,10 +68,12 @@ async def get_player_maps_stats(
 @router.get("/analyze/{nickname}", response_model=MapsInsight)
 async def analyze_player(
     nickname: str,
-    analysis_service: PlayerAnalysisService = Depends(get_player_analysis_service),
+    player_service: PlayerService = Depends(get_player_service),
+    maps_service: MapsStatsService = Depends(get_maps_stats_service),
 ):
     """Выполняет комплексный анализ для выявления сильной и слабой карты игрока."""
-    return await analysis_service.analyze(nickname=nickname)
+    player = await player_service.get_or_create_player(nickname=nickname)
+    return await maps_service.analyze(player.player_id)
 
 
 @router.get("/when-to-play/{nickname}", response_model=WhenToPlayInsight)

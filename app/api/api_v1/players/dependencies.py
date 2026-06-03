@@ -6,9 +6,7 @@ from fastapi import Depends
 from app.application import (
     MapsStatsService,
     PlayerService,
-    PlayerAnalysisService,
     TimeAnalysisService,
-    MatchHistoryService,
     MatchHistoryService,
 )
 from app.infrastructure.db.repositories import (
@@ -59,17 +57,6 @@ async def get_maps_stats_service(
     return MapsStatsService(
         repository=repository,
         faceit_client=faceit_client,
-    )
-
-
-async def get_player_analysis_service(
-    maps_service: MapsStatsService = Depends(get_maps_stats_service),
-    player_service: PlayerService = Depends(get_player_service),
-) -> PlayerAnalysisService:
-    """Dependency-фабрика для PlayerAnalysisService."""
-    return PlayerAnalysisService(
-        maps_service=maps_service,
-        player_service=player_service,
     )
 
 
