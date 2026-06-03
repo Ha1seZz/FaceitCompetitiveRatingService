@@ -141,3 +141,21 @@ class MatchPublic(MatchStats, MatchDetails):
     """Объединенная схема для вывода матча."""
 
     pass
+
+
+class MatchShortResponse(BaseModel):
+    """Легкая схема для отображения матча в списках (без тяжелых вложенных связей)."""
+
+    match_id: str
+    region: str
+    status: str
+    competition_name: str
+    configured_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    best_of: int
+    winner: str | None = None
+    faceit_url: str
+
+    class Config:
+        from_attributes = True

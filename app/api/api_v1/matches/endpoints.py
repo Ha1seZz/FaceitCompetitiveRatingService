@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, status
 
 from .services.match_service import MatchService
 from .dependencies import get_current_match_details, get_match_service
-from .schemas import MatchDetails, MatchPublic
+from .schemas import MatchDetails, MatchShortResponse
 from app.core.config import settings
 
 
@@ -14,7 +14,7 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=list[MatchPublic])
+@router.get("/", response_model=list[MatchShortResponse])
 async def get_matches(
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -33,7 +33,7 @@ async def get_match_details(
     return await match_service.create_or_update_from_faceit(match_data)
 
 
-@router.get("/region/{region}", response_model=list[MatchDetails])
+@router.get("/region/{region}", response_model=list[MatchShortResponse])
 async def get_matches_by_region(
     region: str,
     match_service: MatchService = Depends(get_match_service),

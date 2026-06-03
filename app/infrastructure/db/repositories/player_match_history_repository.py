@@ -35,7 +35,9 @@ class MatchHistoryRepository:
 
         return [
             MatchHistoryRow(
-                match_id=match_id, finished_at_utc=finished_at_utc, is_win=is_win
+                match_id=match_id,
+                finished_at_utc=finished_at_utc,
+                is_win=is_win,
             )
             for (match_id, finished_at_utc, is_win) in result.all()
         ]

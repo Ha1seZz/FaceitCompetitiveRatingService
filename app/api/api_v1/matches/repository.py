@@ -17,12 +17,13 @@ class MatchRepository:
         """Добавляет новый матч в сессию и фиксирует состояние."""
         self.session.add(match)
         await self.session.flush()
-        await self.session.refresh(match)
-        return match
+        return await self.get_by_match_id(match.match_id) or match
 
     async def get_all(self, limit: int, offset: int) -> list[Match]:
         """Извлекает все матчи из базы данных."""
-        stmt = select(Match).offset(offset).limit(limit)
+        stmt = (
+            select(Match).options(selectinload(Match.teams)).limit(limit).offset(offset)
+        )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -35,20 +36,28 @@ class MatchRepository:
         )
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
-    async def get_all_by_region(self, region: str) -> list[Match]:
+    async def get_all_by_region(
+        self,
+        region: str,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> list[Match]:
         """Извлекает список всех матчей, принадлежащих конкретному региону (например, EU, US)."""
         stmt = (
             select(Match)
             .where(Match.region == region)
-            .options(selectinload(Match.teams).selectinload(Team.players))
+            .options(selectinload(Match.teams))
+            .limit(limit)
+            .offset(offset)
         )
-        return list((await self.session.execute(stmt)).scalars().all())
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
     async def update(self, match: Match) -> Match:
         """Синхронизирует изменения в существующем матче с базой данных."""
         await self.session.flush()
-        await self.session.refresh(match)
-        return match
+        # Перезагружаем с selectinload для связей
+        return await self.get_by_match_id(match.match_id) or match
 
     async def delete_match(self, match_id: str) -> bool:
         """

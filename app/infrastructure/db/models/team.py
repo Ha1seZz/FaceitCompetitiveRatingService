@@ -30,7 +30,6 @@ class Team(IdIntPkMixin, Base):
         back_populates="team",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="selectin",
     )
 
     # Обратная связь с матчем

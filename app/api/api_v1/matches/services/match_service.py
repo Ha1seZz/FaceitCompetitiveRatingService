@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.db.models import Match, Team, MatchPlayer
 from app.api.api_v1.matches.repository import MatchRepository
-from app.api.api_v1.matches.schemas import MatchCreate
+from app.api.api_v1.matches.schemas import MatchCreate, MatchShortResponse, MatchDetails
 
 
 class MatchService:
@@ -29,7 +29,7 @@ class MatchService:
 
         return teams
 
-    async def create_or_update_from_faceit(self, match_data: dict) -> Match:
+    async def create_or_update_from_faceit(self, match_data: dict) -> MatchDetails:
         """Upsert матча: валидирует данные Faceit и синхронизирует их с БД."""
         # Валидация и трансформация данных через Pydantic
         validated = MatchCreate(**match_data)
@@ -47,16 +47,24 @@ class MatchService:
             new_match = Match(**data)
             new_match.teams = self._build_teams(teams_raw)
             match = await self.repository.create(new_match)
-        return match
+        return MatchDetails.model_validate(match, from_attributes=True)
 
-    async def get_matches(self, limit: int, offset: int) -> list[Match]:
+    async def get_matches(self, limit: int, offset: int) -> list[MatchShortResponse]:
         """Возвращает список матчей из локальной БД с пагинацией."""
-        return await self.repository.get_all(limit=limit, offset=offset)
+        matches = await self.repository.get_all(limit=limit, offset=offset)
+        return [MatchShortResponse.model_validate(m, from_attributes=True) for m in matches]
 
-    async def get_finished_matches_by_region(self, region: str) -> list[Match]:
+    async def get_finished_matches_by_region(
+        self,
+        region: str,
+    ) -> list[MatchShortResponse]:
         """Возвращает только FINISHED матчи для заданного региона."""
         matches = await self.repository.get_all_by_region(region)
-        return [m for m in matches if m.status == "FINISHED"]
+        return [
+            MatchShortResponse.model_validate(m, from_attributes=True)
+            for m in matches
+            if m.status == "FINISHED"
+        ]
 
     async def delete_match(self, match_id: str) -> None:
         """Удаляет матч; если матч не найден — кидает 404."""
