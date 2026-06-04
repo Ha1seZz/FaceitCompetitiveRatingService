@@ -29,7 +29,9 @@ class MatchHistoryService:
         self.session = session
 
     async def get_or_fetch_match_history(
-        self, player_id: str, match_limit: int = None
+        self,
+        player_id: str,
+        match_limit: int = None,
     ) -> list[MatchHistoryRow]:
         """Возвращает историю матчей игрока."""
         updated_at = await self.player_repo.get_match_history_updated_at(player_id)

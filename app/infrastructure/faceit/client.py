@@ -1,5 +1,7 @@
 """Модуль клиента для взаимодействия с Faceit Data API."""
 
+import asyncio
+
 import httpx
 from app.core.exceptions import ExternalServiceUnavailable, FaceitEntityNotFound
 
@@ -54,27 +56,32 @@ class FaceitClient:
         max_matches: int = 1000,
     ) -> list[dict]:
         """Загружает историю матчей игрока из Faceit."""
-        all_matches: list[dict] = []
         limit = 100
-        offset = 0
+        offsets = list(range(0, max_matches, limit))
+        semaphore = asyncio.Semaphore(5)
 
-        while offset < max_matches:
-            response = await self.client.get(
-                f"/players/{player_id}/history",
-                params={"game": game, "offset": offset, "limit": limit},
-            )
+        async def fetch_page(offset: int) -> list[dict]:
+            async with semaphore:
+                try:
+                    response = await self.client.get(
+                        f"/players/{player_id}/history",
+                        params={"game": game, "offset": offset, "limit": limit},
+                    )
+                    data = await self._handle_response(response, "Match history")
+                    return data.get("items", []) or []
+                except Exception:
+                    return []
 
-            data = await self._handle_response(response, "Match history")
-            items = data.get("items", [])
+        tasks = [fetch_page(offset) for offset in offsets]
+        pages = await asyncio.gather(*tasks)
 
-            if not items:
+        all_matches: list[dict] = []
+        for page in pages:
+            if not page:
                 break
+            all_matches.extend(page)
 
-            all_matches.extend(items)
-
-            if len(items) < limit:
+            if len(page) < limit:
                 break
-
-            offset += limit
 
         return all_matches
