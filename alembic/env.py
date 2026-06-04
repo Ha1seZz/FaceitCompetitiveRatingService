@@ -10,7 +10,6 @@ from alembic import context
 from app.core.config import settings
 from app.infrastructure.db.models import Base
 
-
 config = context.config
 
 if config.config_file_name is not None:
@@ -35,7 +34,11 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        compare_type=True,
+    )
 
     with context.begin_transaction():
         context.run_migrations()

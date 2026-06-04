@@ -13,8 +13,8 @@ class PlayerProfileDetails(BaseModel):
     nickname: str
     country: str
     verified: bool
-    steam_nickname: str
-    steam_id_64: int
+    steam_nickname: str | None = None
+    steam_id_64: int | None = None
     faceit_url: str
     player_id: str
     friends_count: int
@@ -25,16 +25,32 @@ class PlayerProfileDetails(BaseModel):
     def prepare_profile(cls, data: Any) -> Any:
         """Трансформирует сырой JSON профиля перед валидацией."""
         if isinstance(data, dict):
-            data["friends_count"] = len(data.get("friends_ids"))  # Подсчет друзей
+            friends = data.get("friends_ids")
+            data["friends_count"] = len(friends) if friends is not None else 0
+
+            steam_id = data.get("steam_id_64")
+            if steam_id == "" or steam_id is None:
+                data["steam_id_64"] = None
+            else:
+                try:
+                    data["steam_id_64"] = int(steam_id)
+                except (ValueError, TypeError):
+                    data["steam_id_64"] = None
+
+            steam_nick = data.get("steam_nickname")
+            if steam_nick == "" or steam_nick is None:
+                data["steam_nickname"] = None
 
             # Конвертация строки в datetime с принудительным UTC
             raw_date = data.get("activated_at")
-            dt = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
-            data["activated_at"] = dt.astimezone(timezone.utc)
+            if raw_date:
+                dt = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
+                data["activated_at"] = dt.astimezone(timezone.utc)
 
             # Формирование локализованной ссылки
             url: str = data.get("faceit_url", "")
             data["faceit_url"] = url.replace("{lang}", settings.faceit.default_language)
+
         return data
 
 

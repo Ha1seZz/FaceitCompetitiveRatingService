@@ -17,7 +17,9 @@ class Player(Base):
     country: Mapped[str] = mapped_column(nullable=True, index=True)
     verified: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     steam_nickname: Mapped[str | None] = mapped_column(nullable=True)
-    steam_id_64: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    steam_id_64: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True, index=True
+    )
     faceit_url: Mapped[str] = mapped_column(nullable=False)
     player_id: Mapped[str] = mapped_column(primary_key=True)
     friends_count: Mapped[int] = mapped_column(default=0, server_default=text("0"))
