@@ -1,7 +1,9 @@
 """Репозиторий для работы с игроками в базе данных."""
 
 from datetime import datetime
-from sqlalchemy import select
+
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import select, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.db.models import Player
@@ -18,7 +20,6 @@ class PlayerRepository:
         """Сохраняет нового игрока в базе данных."""
         self.session.add(player)
         await self.session.flush()
-        await self.session.refresh(player)
         return player
 
     async def get_all(self, limit: int, offset: int) -> list[Player]:
@@ -29,9 +30,7 @@ class PlayerRepository:
 
     async def get_by_player_id(self, player_id: str) -> Player | None:
         """Выполняет поиск игрока по его уникальному идентификатору Faceit."""
-        stmt = select(Player).where(Player.player_id == player_id)
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self.session.get(Player, player_id)
 
     async def get_by_nickname(self, nickname: str) -> Player | None:
         """Выполняет поиск игрока по его текущему никнейму."""
@@ -45,8 +44,8 @@ class PlayerRepository:
             Player.player_id == player_id
         )
         result = await self.session.execute(stmt)
-        row = result.scalar_one_or_none()
-        if row is None:
+        row = result.tuple().first()
+        if not row:
             return None
 
         pid, updated_at = row
@@ -66,17 +65,33 @@ class PlayerRepository:
         updated_at: datetime,
     ) -> bool:
         """Установить timestamp обновления истории матчей."""
-        player = await self.session.get(Player, player_id)
-        if player:
-            player.match_history_updated_at = updated_at
-            return True
-        return False
+        stmt = (
+            sql_update(Player)
+            .where(Player.player_id == player_id)
+            .values(match_history_updated_at=updated_at)
+        )
+        result = await self.session.execute(stmt)
+        return result.rowcount > 0
 
-    async def update(self, player: Player) -> Player:
-        """Синхронизирует изменения существующего объекта игрока с базой данных."""
-        await self.session.flush()
-        await self.session.refresh(player)
-        return player
+    async def upsert_from_faceit_data(self, data: dict) -> Player:
+        """
+        Атомарно сохраняет или обновляет игрока в БД.
+        Защищено от Race Condition на уровне СУБД.
+        """
+        stmt = pg_insert(Player).values(**data)
+
+        update_attrs = {
+            key: value for key, value in data.items() 
+            if key != "player_id"
+        }
+
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[Player.player_id],
+            set_=update_attrs
+        ).returning(Player)
+
+        result = await self.session.execute(stmt)
+        return result.scalar_one()
 
     async def delete_player(self, player_id: str) -> bool:
         """

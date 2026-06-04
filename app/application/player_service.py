@@ -1,6 +1,7 @@
 """Сервис для управления бизнес-логикой игроков."""
 
 from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas import PlayerCreate
 from app.infrastructure.db.repositories import PlayerRepository
@@ -13,9 +14,11 @@ class PlayerService:
 
     def __init__(
         self,
+        session: AsyncSession,
         repository: PlayerRepository,
         faceit_client: FaceitClient,
     ):
+        self.session = session
         self.repository = repository
         self.faceit_client = faceit_client
 
@@ -23,18 +26,10 @@ class PlayerService:
         """Синхронизирует данные игрока, полученные из внешнего API, с базой данных."""
         # Валидация и трансформация данных через Pydantic
         validated = PlayerCreate(**player_data)
-        data = validated.model_dump()
+        data = validated.model_dump(exclude_unset=True)
 
-        player = await self.repository.get_by_player_id(data["player_id"])
-
-        if player:  # Обновление существующего игрока
-            for key, value in data.items():
-                setattr(player, key, value)
-            player = await self.repository.update(player)
-        else:  # Создание новой записи
-            new_player = Player(**data)
-            player = await self.repository.create(new_player)
-
+        player = await self.repository.upsert_from_faceit_data(data)
+        await self.session.commit()
         return player
 
     async def get_or_create_player(self, nickname: str) -> Player:

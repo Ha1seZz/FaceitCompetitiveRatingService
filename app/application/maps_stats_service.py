@@ -2,6 +2,8 @@
 
 from datetime import datetime, timezone
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.schemas import MapStatsCreate, MapStatsResponse, MapsInsight
 from app.schemas.maps_insight import MapInsightItem, MapReliableInsight
 from app.infrastructure.db.repositories import MapsStatsRepository
@@ -17,9 +19,11 @@ class MapsStatsService:
 
     def __init__(
         self,
+        session: AsyncSession,
         repository: MapsStatsRepository,
         faceit_client: FaceitClient,
     ):
+        self.session = session
         self.repository = repository
         self.faceit_client = faceit_client
 
@@ -55,6 +59,7 @@ class MapsStatsService:
         ]
 
         await self.repository.bulk_create(db_instances)
+        await self.session.commit()
         return db_instances
 
     async def analyze(self, player_id: str) -> MapsInsight:

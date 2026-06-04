@@ -3,7 +3,7 @@
 Гарантирует паттерн "один HTTP-запрос -> одна сессия -> один commit/rollback".
 """
 
-from typing import AsyncGenerator
+from typing import AsyncIterator
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -27,12 +27,11 @@ class DatabaseHelper:
             expire_on_commit=False,
         )
 
-    async def session_dependency(self) -> AsyncGenerator[AsyncSession, None]:
+    async def session_dependency(self) -> AsyncIterator[AsyncSession]:
         """Зависимость (dependency) для FastAPI, предоставляющая новую сессию на каждый запрос."""
         async with self.session_factory() as session:
             try:
                 yield session
-                await session.commit()
             except Exception:
                 await session.rollback()
                 raise
