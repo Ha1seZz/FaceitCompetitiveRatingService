@@ -1,19 +1,18 @@
 """Зависимости для обеспечения доступа к Faceit API."""
 
-from fastapi import Depends
+from fastapi import Depends, Request
 import httpx
 
 from app.infrastructure.faceit.client import FaceitClient
 from app.core.config import settings
 
 
-async def get_httpx_client() -> httpx.AsyncClient:  # type: ignore
-    """Создает и предоставляет httpx клиент для работы с Faceit API."""
-    async with httpx.AsyncClient(
-        base_url=settings.faceit.base_url,
-        headers={"Authorization": f"Bearer {settings.faceit.api_key}"},
-    ) as client:
-        yield client
+async def get_httpx_client(request: Request) -> httpx.AsyncClient:  # type: ignore
+    """
+    Возвращает синглтон-экземпляр httpx.AsyncClient из состояния приложения.
+    Никаких новых соединений на каждый запрос — берем готовое из пула.
+    """
+    return request.app.state.httpx_client
 
 
 def get_faceit_client(
