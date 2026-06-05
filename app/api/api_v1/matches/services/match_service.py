@@ -3,6 +3,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.infrastructure.faceit.parsers import parse_faceit_match_json
 from app.infrastructure.db.models import Match, Team, MatchPlayer
 from app.api.api_v1.matches.repository import MatchRepository
 from app.api.api_v1.matches.schemas import MatchCreate, MatchShortResponse, MatchDetails
@@ -31,8 +32,11 @@ class MatchService:
 
     async def create_or_update_from_faceit(self, match_data: dict) -> MatchDetails:
         """Upsert матча: валидирует данные Faceit и синхронизирует их с БД."""
+        # Парсим сырой JSON от Faceit в чистый словарь
+        clean_data = parse_faceit_match_json(match_data)
+
         # Валидация и трансформация данных через Pydantic
-        validated = MatchCreate(**match_data)
+        validated = MatchCreate(**clean_data)
         data = validated.model_dump()
         teams_raw = data.pop("teams")
 
