@@ -31,12 +31,11 @@ class MatchHistoryService:
     async def get_or_fetch_match_history(
         self,
         player_id: str,
+        updated_at: datetime,
         match_limit: int = None,
     ) -> list[MatchHistoryRow]:
         """Возвращает историю матчей игрока."""
-        updated_at = await self.player_repo.get_match_history_updated_at(player_id)
-
-        if not self._is_cache_stale(updated_at):
+        if not self._is_cache_stale(updated_at):  # Если кэш свежий
             return await self.match_history_repo.get_last(
                 player_id=player_id,
                 limit=match_limit or settings.match_history.limit,
