@@ -1,17 +1,24 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 import httpx
 import uvicorn
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
-from app.api.exception_handlers import setup_exception_handlers
 from app.api import router as api_router
+from app.api.exception_handlers import setup_exception_handlers
+from app.api.middleware import LoggingMiddleware
+from app.core.logger import setup_logging
 from app.core.config import settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_logging()
+
+    from loguru import logger
+    logger.info("Starting up FaceitCompetitiveRatingService...")
+
     limits = httpx.Limits(max_keepalive_connections=20, max_connections=100)
     app.state.httpx_client = httpx.AsyncClient(
         base_url=settings.faceit.base_url,
@@ -20,18 +27,24 @@ async def lifespan(app: FastAPI):
         timeout=httpx.Timeout(10.0),
     )
 
-    print(" [INFO] HTTPX Client initialized with connection pool.")
+    logger.info(
+        "HTTPX client initialized | base_url={base_url} | pool_size={pool_size}",
+        base_url=settings.faceit.base_url,
+        pool_size=limits.max_connections,
+    )
 
     yield
 
     await app.state.httpx_client.aclose()
-    print(" [INFO] HTTPX Client closed.")
+    logger.info("HTTPX client closed. Shutdown complete.")
 
 
 app = FastAPI(
     title="Faceit Competitive Rating Service",
     lifespan=lifespan,
 )
+
+app.add_middleware(LoggingMiddleware)
 
 setup_exception_handlers(app)
 

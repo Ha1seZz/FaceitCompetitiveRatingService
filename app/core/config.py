@@ -76,6 +76,7 @@ class Settings(BaseSettings):
     или .env файла. Поддерживает вложенные настройки через разделитель '__'.
     """
 
+    debug: bool = True
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
