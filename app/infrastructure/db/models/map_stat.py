@@ -49,7 +49,7 @@ class MapStat(IdIntPkMixin, Base):
     )
     player: Mapped["Player"] = relationship(back_populates="map_stats")
 
-    updated_at: Mapped[datetime] = mapped_column(  # Время последнего обновления кеша
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         onupdate=func.now(),
         server_default=func.now(),

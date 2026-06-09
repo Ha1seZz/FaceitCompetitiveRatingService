@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, DateTime, text
+from sqlalchemy import BigInteger, DateTime, text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.settings.base import Base
@@ -31,6 +31,13 @@ class Player(Base):
     region: Mapped[str] = mapped_column(nullable=False, index=True)
     skill_level: Mapped[int] = mapped_column(nullable=False, index=True)
     faceit_elo: Mapped[int] = mapped_column(nullable=False, index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        onupdate=func.now(),
+        server_default=func.now(),
+        nullable=False,
+        index=True,
+    )
 
     map_stats: Mapped[list["MapStat"]] = relationship(
         back_populates="player",

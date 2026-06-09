@@ -41,17 +41,20 @@ async def get_players(
 
 @router.get("/profile/{nickname}", response_model=PlayerProfileDetails)
 async def get_player_profile(
-    player_data: dict = Depends(get_current_faceit_player),
+    nickname: str,
     player_service: PlayerService = Depends(get_player_service),
 ):
-    """Получить профиль игрока и синхронизировать его с локальной базой данных."""
-    return await player_service.create_or_update_from_faceit(player_data=player_data)
+    """Получить профиль игрока (данные кэшируются на 1 час)."""
+    return await player_service.get_or_create_player(nickname=nickname)
 
 
 @router.get("/elo-points/{nickname}", response_model=PlayerCSRating)
-async def get_player_elo_points(player: dict = Depends(get_current_faceit_player)):
+async def get_player_elo_points(
+    nickname: str,
+    player_service: PlayerService = Depends(get_player_service),
+):
     """Получить количество elo и уровень мастерства игрока."""
-    return player
+    return await player_service.get_or_create_player(nickname=nickname)
 
 
 @router.get("/maps-stats/{nickname}", response_model=list[MapStatsResponse])

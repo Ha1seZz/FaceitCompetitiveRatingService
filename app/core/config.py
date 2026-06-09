@@ -5,7 +5,6 @@ from pathlib import Path
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 BASE_DIR = Path(__file__).parent.parent.parent
 
 
@@ -53,6 +52,12 @@ class PlayerSettings(BaseModel):
     """Настройки бизнес-логики обработки данных игрока."""
 
     min_matches_for_analysis: int = 10
+    ttl_seconds: int = 3600  # 1h
+
+    @property
+    def ttl(self) -> timedelta:
+        """TTL в формате timedelta."""
+        return timedelta(seconds=self.ttl_seconds)
 
 
 class MatchHistorySettings(BaseModel):

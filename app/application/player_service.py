@@ -1,8 +1,11 @@
 """Сервис для управления бизнес-логикой игроков."""
 
+from datetime import datetime, timezone
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.schemas import PlayerCreate
 from app.infrastructure.db.repositories import PlayerRepository
 from app.infrastructure.faceit.client import FaceitClient
@@ -34,14 +37,13 @@ class PlayerService:
 
     async def get_or_create_player(self, nickname: str) -> Player:
         """Возвращает игрока из локальной БД, а если его нет — подтягивает из Faceit и сохраняет."""
-        player = await self.repository.get_by_nickname(nickname)  # Ищем локально
+        player = await self.repository.get_by_nickname(nickname)
 
         if player:
-            return player
+            if not self._is_cache_stale(player.updated_at):  # Если кэш свежий
+                return player
 
-        # Иначе, тянем Faceit
         player_data = await self.faceit_client.get_player(nickname)
-
         return await self.create_or_update_from_faceit(player_data=player_data)
 
     async def get_players(self, limit: int, offset: int) -> list[Player]:
@@ -57,3 +59,11 @@ class PlayerService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Игрок с ID {player_id} не найден в базе данных.",
             )
+
+    def _is_cache_stale(self, updated_at: datetime | None) -> bool:
+        """True, если кэш отсутствует или старше TTL."""
+        if not updated_at:
+            return True
+
+        age = datetime.now(timezone.utc) - updated_at
+        return age > settings.player.ttl

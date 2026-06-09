@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy import select, update as sql_update
+from sqlalchemy import func, select, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.db.models import Player
@@ -84,10 +84,11 @@ class PlayerRepository:
             key: value for key, value in data.items() 
             if key != "player_id"
         }
+        update_attrs["updated_at"] = func.now()
 
         stmt = stmt.on_conflict_do_update(
             index_elements=[Player.player_id],
-            set_=update_attrs
+            set_=update_attrs,
         ).returning(Player)
 
         result = await self.session.execute(stmt)
