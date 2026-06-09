@@ -5,6 +5,7 @@
 
 from typing import AsyncIterator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     create_async_engine,
@@ -35,6 +36,15 @@ class DatabaseHelper:
             except Exception:
                 await session.rollback()
                 raise
+
+    async def ping(self) -> bool:
+        """Проверяет работоспособность пула соединений и самой БД."""
+        try:
+            async with self.session_factory() as session:
+                await session.execute(text("SELECT 1"))
+            return True
+        except Exception:
+            return False
 
 
 # Глобальный экземпляр помощника для использования в приложении

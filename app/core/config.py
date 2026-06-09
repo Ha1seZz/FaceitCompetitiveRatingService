@@ -15,6 +15,7 @@ class ApiV1Prefix(BaseModel):
     prefix: str = "/v1"
     players: str = "/players"
     matches: str = "/matches"
+    system: str = "/system"
 
 
 class ApiPrefix(BaseModel):

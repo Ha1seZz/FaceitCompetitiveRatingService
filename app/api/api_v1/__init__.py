@@ -10,7 +10,7 @@ from app.core.config import settings
 
 from .players.endpoints import router as players_router
 from .matches.endpoints import router as matches_router
-
+from .system.endpoints import router as system_router
 
 http_bearer = HTTPBearer(auto_error=False)
 
@@ -21,3 +21,4 @@ router = APIRouter(
 )
 router.include_router(players_router)  # /v1/players
 router.include_router(matches_router)  # /v1/matches
+router.include_router(system_router)  # /v1/system
