@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from loguru import logger
 
 from app.schemas import MapStatsCreate, MapStatsResponse, MapsInsight
 from app.schemas.maps_insight import MapInsightItem, MapReliableInsight
@@ -48,7 +49,44 @@ class MapsStatsService:
         raw_stats: dict,
     ) -> list[MapStat]:
         """Сохраняет статистику в БД."""
-        segments = [s for s in raw_stats.get("segments", []) if s.get("type") == "Map"]
+        TARGET_MODE = "5v5"
+
+        unique_maps: dict[str, dict] = {}
+
+        for segment in raw_stats.get("segments", []):
+            # Отсекаем всё, что не является картой или нужным режимом
+            if segment.get("type") != "Map" or segment.get("mode") != TARGET_MODE:
+                continue
+
+            map_name = segment.get("label")
+            if not map_name:
+                continue
+
+            if map_name in unique_maps:
+                logger.warning(
+                    f"Обнаружен дубликат карты {map_name} для режима 5v5. "
+                    f"Выбираем запись с наибольшим количеством матчей."
+                )
+                # Сравниваем количество матчей, оставляем лучшую запись
+                current_matches = int(segment.get("stats", {}).get("Matches", 0))
+                existing_matches = int(
+                    unique_maps[map_name].get("stats", {}).get("Matches", 0)
+                )
+
+                if current_matches <= existing_matches:
+                    continue
+
+            unique_maps[map_name] = segment
+
+        segments = list(unique_maps.values())
+
+        # Защитная проверка на случай, если Faceit отдал пустой массив или изменил API
+        if not segments and raw_stats.get("segments"):
+            logger.error(
+                f"API Faceit вернул сегменты, но ни один не подошел под фильтр соревновательных карт. "
+                f"Возможно, изменился формат ответа API!"
+            )
+
         validated_schemas = [MapStatsCreate(**stat) for stat in segments]
 
         await self.repository.delete_by_player_id(player_id)
