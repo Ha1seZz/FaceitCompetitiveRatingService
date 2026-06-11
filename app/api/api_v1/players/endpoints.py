@@ -102,4 +102,4 @@ async def delete_player(
     player_service: PlayerService = Depends(get_player_service),
 ):
     """Удалить игрока из локальной базы данных."""
-    return await player_service.delete_player(player_id=player_id)
+    await player_service.delete_player(player_id=player_id)

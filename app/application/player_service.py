@@ -58,6 +58,8 @@ class PlayerService:
         if not success:
             raise PlayerNotFoundError(player_id=player_id)
 
+        await self.session.commit()
+
     def _is_cache_stale(self, updated_at: datetime | None) -> bool:
         """True, если кэш отсутствует или старше TTL."""
         if not updated_at:
