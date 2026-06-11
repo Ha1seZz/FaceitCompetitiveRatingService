@@ -1,7 +1,6 @@
 """Сервис кэширования и выдачи статистики игрока по картам."""
 
 from datetime import datetime, timezone
-from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger

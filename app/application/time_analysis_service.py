@@ -1,10 +1,9 @@
 """Use-case: анализ "когда лучше играть" по истории матчей игрока."""
 
-from app.domain.time_analysis.models import MatchTimeSnapshot
+from app.domain.time_analysis.models import MatchTimeSnapshot, TimeWindowSnapshot
 from app.domain.time_analysis.analysis import analyze_play_time
 from app.application.match_history_service import MatchHistoryService
 from app.application.player_service import PlayerService
-from app.schemas import WhenToPlayInsight
 
 
 class TimeAnalysisService:
@@ -18,7 +17,7 @@ class TimeAnalysisService:
         self.player_service = player_service
         self.match_history_service = match_history_service
 
-    async def analyze(self, nickname) -> WhenToPlayInsight:
+    async def analyze(self, nickname) -> TimeWindowSnapshot:
         """Возвращает рекомендацию 'когда лучше играть' по истории матчей (окно в UTC)."""
         player = await self.player_service.get_or_create_player(nickname=nickname)
         rows = await self.match_history_service.get_or_fetch_match_history(
@@ -34,12 +33,4 @@ class TimeAnalysisService:
             for row in rows
         ]
 
-        insight = analyze_play_time(snapshots).best_window
-
-        return WhenToPlayInsight(
-            start_hour=insight.start_hour,
-            end_hour=(insight.start_hour + insight.window_size_hours) % 24,
-            matches=insight.matches,
-            wins=insight.wins,
-            winrate=insight.winrate_percent,
-        )
+        return analyze_play_time(snapshots)

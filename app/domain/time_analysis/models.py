@@ -21,10 +21,3 @@ class TimeWindowSnapshot:
     matches: int
     wins: int
     winrate_percent: int
-
-
-@dataclass(frozen=True)
-class WhenToPlaySnapshot:
-    """Результат доменного анализа: лучшее окно по выбранной метрике."""
-
-    best_window: TimeWindowSnapshot

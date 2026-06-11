@@ -4,7 +4,7 @@ from typing import Any
 from collections import defaultdict
 from datetime import datetime, timezone
 
-from .models import MatchTimeSnapshot, TimeWindowSnapshot, WhenToPlaySnapshot
+from .models import MatchTimeSnapshot, TimeWindowSnapshot
 from app.core.exceptions import InsufficientDataError
 
 
@@ -53,14 +53,14 @@ def analyze_play_time(
     window_size_hours: int = 3,
     min_matches_in_window: int = 30,
     min_valid_matches_in_window: int = 20,
-) -> WhenToPlaySnapshot:
+) -> TimeWindowSnapshot:
     """Находит лучшее окно по времени суток для игры."""
     if window_size_hours <= 0 or window_size_hours > 24:
         raise ValueError("window_size_hours must be in range 1..24")
 
-    matches_by_hour = defaultdict(int)        # Все матчи (включая is_win=None)
+    matches_by_hour = defaultdict(int)  # Все матчи (включая is_win=None)
     valid_matches_by_hour = defaultdict(int)  # Матчи с известным исходом
-    wins_by_hour = defaultdict(int)           # Победы среди матчей с известным исходом
+    wins_by_hour = defaultdict(int)  # Победы среди матчей с известным исходом
 
     for snapshot in snapshots:
         hour = snapshot.finished_at_utc.hour
@@ -105,5 +105,4 @@ def analyze_play_time(
             f"and >= {min_valid_matches_in_window} matches with known outcome."
         )
 
-    best = max(candidates, key=lambda w: (w.winrate_percent, w.matches))
-    return WhenToPlaySnapshot(best_window=best)
+    return max(candidates, key=lambda w: (w.winrate_percent, w.matches))

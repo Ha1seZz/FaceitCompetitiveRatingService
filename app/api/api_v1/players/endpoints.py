@@ -85,7 +85,16 @@ async def when_to_play(
     time_analysis_service: TimeAnalysisService = Depends(get_time_analysis_service),
 ):
     """Возвращает рекомендацию "когда лучше играть" для указанного игрока в формате UTC."""
-    return await time_analysis_service.analyze(nickname)
+    best_window = await time_analysis_service.analyze(nickname)
+    end_hour = (best_window.start_hour + best_window.window_size_hours) % 24
+
+    return WhenToPlayInsight(
+        start_hour=best_window.start_hour,
+        end_hour=end_hour,
+        matches=best_window.matches,
+        wins=best_window.wins,
+        winrate=float(best_window.winrate_percent),
+    )
 
 
 @router.delete("/{player_id}", status_code=status.HTTP_204_NO_CONTENT)
