@@ -84,7 +84,7 @@ async def when_to_play(
     nickname: str,
     time_analysis_service: TimeAnalysisService = Depends(get_time_analysis_service),
 ):
-    """Возвращает рекомендацию "когда лучше играть (+5)" для указанного игрока."""
+    """Возвращает рекомендацию "когда лучше играть" для указанного игрока в формате UTC."""
     return await time_analysis_service.analyze(nickname)
 
 

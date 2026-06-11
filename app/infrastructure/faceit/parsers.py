@@ -1,10 +1,12 @@
 """Парсер для трансформации сырых данных из Faceit API в удобную для модели структуру."""
 
 from datetime import datetime, timezone
+from typing import Any
+
 from app.core.config import settings
 
 
-def parse_faceit_match_json(raw_data: dict) -> dict:
+def parse_faceit_match_details(raw_data: dict) -> dict:
     """Адаптер: превращает грязный JSON Faceit в плоский словарь для нашей БД."""
     data = raw_data.copy()
 
@@ -63,3 +65,37 @@ def parse_faceit_match_json(raw_data: dict) -> dict:
     data["faceit_url"] = url.replace("{lang}", settings.faceit.default_language)
 
     return data
+
+
+def parse_faceit_map_stats(data: dict) -> dict[str, Any]:
+    """Парсинг игровой статистики по конкретной карте из сырых данных Faceit."""
+    s: dict = data.get("stats", {})
+    m = int(s.get("Matches", 0))
+    w = int(s.get("Wins", 0))
+    k = int(s.get("Kills", 0))
+    hs = int(s.get("Headshots", 0))
+
+    lost = m - w
+    winrate = round(((w / m) * 100), 2) if m > 0 else 0.0
+    hs_ratio = round(((hs / k) * 100), 2) if k > 0 else 0.0
+
+    return {
+        "map_name": data.get("label"),
+        "matches": m,
+        "won": w,
+        "lost": lost,
+        "winrate": winrate,
+        "average_kills": float(s.get("Average Kills", 0)),
+        "average_deaths": float(s.get("Average Deaths", 0)),
+        "average_kd_ratio": float(s.get("Average K/D Ratio", 0)),
+        "average_kr_ratio": float(s.get("Average K/R Ratio", 0)),
+        "hs": hs_ratio,
+        "adr": float(s.get("ADR", 0)),
+        "rounds": int(s.get("Rounds", 0)),
+        "kills": k,
+        "assists": int(s.get("Assists", 0)),
+        "deaths": int(s.get("Deaths", 0)),
+        "headshots": hs,
+        "total_damage": int(s.get("Total Damage", 0)),
+        "penta_kills": int(s.get("Penta Kills", 0)),
+    }

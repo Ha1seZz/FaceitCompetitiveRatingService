@@ -1,16 +1,16 @@
 """Сервис кэширования и выдачи статистики игрока по картам."""
 
 from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from app.schemas import MapStatsCreate, MapStatsResponse, MapsInsight
-from app.schemas.maps_insight import MapInsightItem, MapReliableInsight
-from app.infrastructure.db.repositories import MapsStatsRepository
 from app.infrastructure.faceit.client import FaceitClient
+from app.infrastructure.faceit.parsers import parse_faceit_map_stats
 from app.infrastructure.db.models import MapStat
-from app.domain.maps.models import MapStatSnapshot
+from app.infrastructure.db.repositories import MapsStatsRepository
+from app.domain.maps.models import MapStatSnapshot, MapsInsightSnapshot
 from app.domain.maps.analysis import analyze_maps
 from app.core.config import settings
 
@@ -32,16 +32,15 @@ class MapsStatsService:
         self,
         player_id: str,
         max_age_minutes: int = 30,
-    ) -> list[MapStatsResponse]:
+    ) -> list[MapStat]:
         """Получить статистику по картам для игрока."""
         cached_stats = await self.repository.get_by_player_id(player_id)
 
         if cached_stats and not self._is_stale(cached_stats, max_age_minutes):
-            return [MapStatsResponse.model_validate(s) for s in cached_stats]
+            return cached_stats
 
         raw_stats = await self.faceit_client.get_player_maps_stats_raw(player_id)
-        db_instances = await self._save_stats(player_id, raw_stats)
-        return [MapStatsResponse.model_validate(s) for s in db_instances]
+        return await self._save_stats(player_id, raw_stats)
 
     async def _save_stats(
         self,
@@ -87,20 +86,21 @@ class MapsStatsService:
                 f"Возможно, изменился формат ответа API!"
             )
 
-        validated_schemas = [MapStatsCreate(**stat) for stat in segments]
-
         await self.repository.delete_by_player_id(player_id)
 
         db_instances = [
-            MapStat(**schema.model_dump(), player_id=player_id)
-            for schema in validated_schemas
+            MapStat(
+                **parse_faceit_map_stats(stat),
+                player_id=player_id,
+            )
+            for stat in segments
         ]
 
         await self.repository.bulk_create(db_instances)
         await self.session.commit()
         return db_instances
 
-    async def analyze(self, player_id: str) -> MapsInsight:
+    async def analyze(self, player_id: str) -> MapsInsightSnapshot:
         """Анализирует карты игрока (best/worst/reliable)."""
         maps_stats = await self.get_or_fetch_maps_stats(player_id)
 
@@ -112,27 +112,9 @@ class MapsStatsService:
             )
             for m in maps_stats
         ]
-        insight = analyze_maps(
+        return analyze_maps(
             snapshots,
             settings.player.min_matches_for_analysis,
-        )
-
-        return MapsInsight(
-            best=MapInsightItem(
-                map=insight.best.map_name,
-                winrate=insight.best.winrate,
-                matches=insight.best.matches,
-            ),
-            worst=MapInsightItem(
-                map=insight.worst.map_name,
-                winrate=insight.worst.winrate,
-                matches=insight.worst.matches,
-            ),
-            reliable=MapReliableInsight(
-                map=insight.reliable.map_name,
-                winrate=insight.reliable.winrate,
-                matches=insight.reliable.matches,
-            ),
         )
 
     def _is_stale(self, stats: list[MapStat], max_age_minutes: int) -> bool:

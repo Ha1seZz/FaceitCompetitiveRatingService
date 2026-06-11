@@ -1,12 +1,12 @@
 """DTO-модели для аналитического ответа по картам игрока."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class MapInsightItem(BaseModel):
     """Элемент краткого инсайта по карте."""
 
-    map: str
+    map_name: str
     winrate: int
     matches: int
 
@@ -14,13 +14,15 @@ class MapInsightItem(BaseModel):
 class MapReliableInsight(BaseModel):
     """DTO 'надёжной' карты игрока."""
 
-    map: str
+    map_name: str
     winrate: int
     matches: int
 
 
 class MapsInsight(BaseModel):
     """DTO ответа анализа карт игрока."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     best: MapInsightItem
     worst: MapInsightItem
