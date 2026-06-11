@@ -2,14 +2,14 @@
 
 from datetime import datetime, timezone
 
-from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.schemas import PlayerCreate
+from app.core.exceptions import PlayerNotFoundError
+from app.domain.player.models import PlayerDomainModel
 from app.infrastructure.db.repositories import PlayerRepository
 from app.infrastructure.faceit.client import FaceitClient
-from app.infrastructure.db.models import Player
+from app.schemas.players import PlayerCreate
 
 
 class PlayerService:
@@ -25,40 +25,38 @@ class PlayerService:
         self.repository = repository
         self.faceit_client = faceit_client
 
-    async def create_or_update_from_faceit(self, player_data: dict) -> Player:
-        """Синхронизирует данные игрока, полученные из внешнего API, с базой данных."""
-        # Валидация и трансформация данных через Pydantic
+    async def create_or_update_from_faceit(
+        self,
+        player_data: dict,
+    ) -> PlayerDomainModel:
+        """Синхронизирует данные, полученные из внешнего API, сохраняя в БД."""
         validated = PlayerCreate(**player_data)
-        data = validated.model_dump(exclude_unset=True)
-
-        player = await self.repository.upsert_from_faceit_data(data)
+        clean_data = validated.model_dump(exclude_unset=True)
+        player_domain = await self.repository.upsert_from_faceit_data(clean_data)
         await self.session.commit()
-        return player
+        return player_domain
 
-    async def get_or_create_player(self, nickname: str) -> Player:
-        """Возвращает игрока из локальной БД, а если его нет — подтягивает из Faceit и сохраняет."""
+    async def get_or_create_player(self, nickname: str) -> PlayerDomainModel:
+        """Возвращает игрока, а если его нет/кэш устарел — подтягивает из Faceit."""
         player = await self.repository.get_by_nickname(nickname)
 
         if player:
             if not self._is_cache_stale(player.updated_at):  # Если кэш свежий
                 return player
 
-        player_data = await self.faceit_client.get_player(nickname)
-        return await self.create_or_update_from_faceit(player_data=player_data)
+        raw_player_data = await self.faceit_client.get_player(nickname)
+        return await self.create_or_update_from_faceit(player_data=raw_player_data)
 
-    async def get_players(self, limit: int, offset: int) -> list[Player]:
+    async def get_players(self, limit: int, offset: int) -> list[PlayerDomainModel]:
         """Получает список всех игроков."""
         return await self.repository.get_all(limit=limit, offset=offset)
 
     async def delete_player(self, player_id: str) -> None:
-        """Проверяет результат удаления и вызывает исключение, если игрок не найден."""
+        """Удаляет игрока или выбрасывает доменную ошибку, если игрок не найден."""
         success = await self.repository.delete_player(player_id=player_id)
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Игрок с ID {player_id} не найден в базе данных.",
-            )
+            raise PlayerNotFoundError(player_id=player_id)
 
     def _is_cache_stale(self, updated_at: datetime | None) -> bool:
         """True, если кэш отсутствует или старше TTL."""

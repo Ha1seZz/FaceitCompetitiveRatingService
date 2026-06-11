@@ -5,8 +5,7 @@ class ApplicationException(Exception):
     """Базовое исключение приложения, от которого наследуются все кастомные ошибки."""
 
     def __init__(self, message: str = "Application error"):
-        self.message = message
-        super().__init__(self.message)
+        super().__init__(message)
 
 
 class FaceitEntityNotFound(ApplicationException):
@@ -28,3 +27,17 @@ class InsufficientDataError(ApplicationException):
 
     def __init__(self, message: str = "Not enough data for analysis"):
         super().__init__(message)
+
+
+class PlayerError(Exception):
+    """Базовое исключение домена игроков."""
+
+    pass
+
+
+class PlayerNotFoundError(PlayerError):
+    """Исключение, выбрасываемое, если игрок не найден в системе."""
+
+    def __init__(self, player_id: str):
+        self.player_id = player_id
+        super().__init__(f"Player with ID {player_id} not found.")

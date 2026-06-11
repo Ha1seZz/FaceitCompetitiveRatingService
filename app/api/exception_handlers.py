@@ -7,6 +7,7 @@ from app.core.exceptions import (
     FaceitEntityNotFound,
     ExternalServiceUnavailable,
     InsufficientDataError,
+    PlayerNotFoundError,
 )
 
 
@@ -21,14 +22,14 @@ async def faceit_entity_not_found_handler(
     )
 
 
-async def external_service_unavailable_handler(
+async def player_not_found_handler(
     request: Request,
-    exc: ExternalServiceUnavailable,
+    exc: PlayerNotFoundError,
 ):
-    """Обработка ошибок недоступности внешних сервисов (503)."""
+    """Обработка ситуации, когда игрок не найден в базе данных."""
     return JSONResponse(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        content={"detail": exc.message},
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": str(exc)},
     )
 
 
@@ -39,6 +40,17 @@ async def insufficient_data_handler(
     """Обработка ситуации, когда данных недостаточно для аналитики (422)."""
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content={"detail": exc.message},
+    )
+
+
+async def external_service_unavailable_handler(
+    request: Request,
+    exc: ExternalServiceUnavailable,
+):
+    """Обработка ошибок недоступности внешних сервисов (503)."""
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         content={"detail": exc.message},
     )
 
@@ -56,4 +68,8 @@ def setup_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         InsufficientDataError,
         insufficient_data_handler,
+    )
+    app.add_exception_handler(
+        PlayerNotFoundError,
+        player_not_found_handler,
     )
