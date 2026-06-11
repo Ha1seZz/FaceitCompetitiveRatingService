@@ -95,11 +95,3 @@ async def get_time_analysis_service(
         player_service=player_service,
         match_history_service=match_history_service,
     )
-
-
-async def get_current_faceit_player(
-    nickname: str,
-    faceit_client: FaceitClient = Depends(get_faceit_client),
-) -> dict:
-    """Запрашивает данные игрока напрямую из Faceit API."""
-    return await faceit_client.get_player(nickname=nickname)

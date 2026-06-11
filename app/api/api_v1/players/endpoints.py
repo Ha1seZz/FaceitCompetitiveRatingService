@@ -17,7 +17,6 @@ from app.schemas import (
     WhenToPlayInsight,
 )
 from .dependencies import (
-    get_current_faceit_player,
     get_maps_stats_service,
     get_player_service,
     get_time_analysis_service,
