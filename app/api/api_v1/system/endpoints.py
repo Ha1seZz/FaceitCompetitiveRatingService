@@ -13,10 +13,13 @@ router = APIRouter(
 @router.get("/health")
 async def health_check():
     """Служебный эндпоинт для проверки здоровья сервиса и инфраструктуры."""
-    is_db_alive = await db_helper.ping()
-
-    if not is_db_alive:
-        logger.error("Health check failed: Database is unreachable")
+    try:
+        await db_helper.ping()
+    except Exception as e:
+        logger.error(
+            "Health check failed: Database is unreachable: {error}",
+            error=e,
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database unavailable",

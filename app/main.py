@@ -5,6 +5,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.core.settings import db_helper
 from app.api import router as api_router
 from app.api.exception_handlers import setup_exception_handlers
 from app.api.middleware import LoggingMiddleware
@@ -17,7 +18,18 @@ async def lifespan(app: FastAPI):
     setup_logging()
 
     from loguru import logger
+
     logger.info("Starting up FaceitCompetitiveRatingService...")
+
+    try:
+        await db_helper.ping()
+        logger.info("Database pool warmed up successfully.")
+    except Exception as e:
+        logger.critical(
+            "Infrastructure check failed. Database is unreachable: {error}",
+            error=e,
+        )
+        raise
 
     limits = httpx.Limits(max_keepalive_connections=20, max_connections=100)
     app.state.httpx_client = httpx.AsyncClient(
@@ -37,6 +49,9 @@ async def lifespan(app: FastAPI):
 
     await app.state.httpx_client.aclose()
     logger.info("HTTPX client closed. Shutdown complete.")
+
+    await db_helper.engine.dispose()
+    logger.info("Database pool disposed. Shutdown complete.")
 
 
 app = FastAPI(
