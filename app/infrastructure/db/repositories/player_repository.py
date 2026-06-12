@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.player.models import PlayerDomainModel
 from app.infrastructure.db.models import Player
-from app.schemas import MatchHistoryMeta
 
 
 class PlayerRepository:
@@ -50,27 +49,6 @@ class PlayerRepository:
         stmt = select(Player).where(Player.nickname == nickname)
         result = await self.session.execute(stmt)
         return self._map_to_domain(result.scalar_one_or_none())
-
-    async def get_match_history_meta(self, player_id) -> MatchHistoryMeta | None:
-        """Вернуть мету кэша истории матчей игрока."""
-        stmt = select(Player.player_id, Player.match_history_updated_at).where(
-            Player.player_id == player_id
-        )
-        result = await self.session.execute(stmt)
-        row = result.tuple().first()
-        if not row:
-            return None
-
-        pid, updated_at = row
-        return MatchHistoryMeta(player_id=pid, updated_at=updated_at)
-
-    async def get_match_history_updated_at(self, player_id: str) -> datetime | None:
-        """Вернуть timestamp обновления истории матчей (или None, если игрок не найден/не обновлялся)."""
-        stmt = select(Player.match_history_updated_at).where(
-            Player.player_id == player_id
-        )
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
 
     async def set_match_history_updated_at(
         self,
