@@ -20,16 +20,19 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         req_id = str(uuid.uuid4())[:8]
         token = request_id_context_var.set(req_id)
 
-        with logger.contextualize(request_id=req_id):
-            logger.info(f"Входящий запрос: {request.method} {request.url.path}")
-            start_time = time.time()
+        start_time = time.time()
 
+        with logger.contextualize(request_id=req_id):
             try:
                 response = await call_next(request)
                 process_time = (time.time() - start_time) * 1000
                 logger.info(
-                    f"Запрос завершен: {request.method} {request.url.path} - "
-                    f"Статус: {response.status_code} - Время: {process_time:.2f}ms"
+                    "Запрос завершен: {method} {path} - "
+                    "Статус: {status_code} - Время: {process_time:.2f}ms",
+                    method=request.method,
+                    path=request.url.path,
+                    status_code=response.status_code,
+                    process_time=process_time,
                 )
 
                 response.headers["X-Request-ID"] = req_id
@@ -38,8 +41,12 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             except Exception as e:
                 process_time = (time.time() - start_time) * 1000
                 logger.exception(
-                    f"ОШИБКА 500: {request.method} {request.url.path} - "
-                    f"Время: {process_time:.2f}ms. Причина: {e}"
+                    "Ошибка при обработке запроса: {method} {path} - "
+                    "Время: {process_time:.2f}ms. Причина: {reason}",
+                    method=request.method,
+                    path=request.url.path,
+                    process_time=process_time,
+                    reason=str(e),
                 )
                 raise
 

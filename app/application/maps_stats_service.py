@@ -64,8 +64,9 @@ class MapsStatsService:
 
             if map_name in unique_maps:
                 logger.warning(
-                    f"Обнаружен дубликат карты {map_name} для режима 5v5. "
-                    f"Выбираем запись с наибольшим количеством матчей."
+                    "Обнаружен дубликат карты {map_name} для режима 5v5. "
+                    "Выбираем запись с наибольшим количеством матчей.",
+                    map_name=map_name
                 )
                 # Сравниваем количество матчей, оставляем лучшую запись
                 current_matches = int(segment.get("stats", {}).get("Matches", 0))
@@ -83,8 +84,8 @@ class MapsStatsService:
         # Защитная проверка на случай, если Faceit отдал пустой массив или изменил API
         if not segments and raw_stats.get("segments"):
             logger.error(
-                f"API Faceit вернул сегменты, но ни один не подошел под фильтр соревновательных карт. "
-                f"Возможно, изменился формат ответа API!"
+                "API Faceit вернул сегменты, но ни один не подошел под фильтр соревновательных карт. "
+                "Возможно, изменился формат ответа API!"
             )
 
         insert_data = []
