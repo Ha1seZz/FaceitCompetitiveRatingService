@@ -18,7 +18,7 @@ async def faceit_entity_not_found_handler(
     """Обработка ошибок отсутствия данных в Faceit API (404)."""
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
-        content={"detail": exc.message},
+        content={"detail": str(exc)},
     )
 
 
@@ -40,7 +40,7 @@ async def insufficient_data_handler(
     """Обработка ситуации, когда данных недостаточно для аналитики (422)."""
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-        content={"detail": exc.message},
+        content={"detail": str(exc)},
     )
 
 
@@ -51,7 +51,7 @@ async def external_service_unavailable_handler(
     """Обработка ошибок недоступности внешних сервисов (503)."""
     return JSONResponse(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        content={"detail": exc.message},
+        content={"detail": str(exc)},
     )
 
 
