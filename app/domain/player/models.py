@@ -6,7 +6,7 @@ from datetime import datetime
 
 @dataclass(frozen=True)
 class PlayerDomainModel:
-    """Чистая доменная сущность игрока, независимая от инфраструктуры."""
+    """Полная доменная модель данных игрока."""
 
     nickname: str
     verified: bool

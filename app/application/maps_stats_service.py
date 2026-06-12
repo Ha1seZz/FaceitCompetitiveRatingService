@@ -5,11 +5,14 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
+from app.infrastructure.db.repositories import MapsStatsRepository
 from app.infrastructure.faceit.client import FaceitClient
 from app.infrastructure.faceit.parsers import parse_faceit_map_stats
-from app.infrastructure.db.models import MapStat
-from app.infrastructure.db.repositories import MapsStatsRepository
-from app.domain.maps.models import MapStatSnapshot, MapsInsightSnapshot
+from app.domain.maps.models import (
+    MapStatDomainModel,
+    MapStatSnapshot,
+    MapsInsightSnapshot,
+)
 from app.domain.maps.analysis import analyze_maps
 from app.core.config import settings
 
@@ -31,7 +34,7 @@ class MapsStatsService:
         self,
         player_id: str,
         max_age_minutes: int = 30,
-    ) -> list[MapStat]:
+    ) -> list[MapStatDomainModel]:
         """Получить статистику по картам для игрока."""
         cached_stats = await self.repository.get_by_player_id(player_id)
 
@@ -45,10 +48,9 @@ class MapsStatsService:
         self,
         player_id: str,
         raw_stats: dict,
-    ) -> list[MapStat]:
+    ) -> list[MapStatDomainModel]:
         """Сохраняет статистику в БД."""
         TARGET_MODE = "5v5"
-
         unique_maps: dict[str, dict] = {}
 
         for segment in raw_stats.get("segments", []):
@@ -85,19 +87,15 @@ class MapsStatsService:
                 f"Возможно, изменился формат ответа API!"
             )
 
-        await self.repository.delete_by_player_id(player_id)
+        insert_data = []
+        for stat in segments:
+            parsed_stat = parse_faceit_map_stats(stat)
+            parsed_stat["player_id"] = player_id
+            insert_data.append(parsed_stat)
 
-        db_instances = [
-            MapStat(
-                **parse_faceit_map_stats(stat),
-                player_id=player_id,
-            )
-            for stat in segments
-        ]
-
-        await self.repository.bulk_create(db_instances)
+        updated_models = await self.repository.bulk_upsert(insert_data)
         await self.session.commit()
-        return db_instances
+        return updated_models
 
     async def analyze(self, player_id: str) -> MapsInsightSnapshot:
         """Анализирует карты игрока (best/worst/reliable)."""
@@ -116,7 +114,7 @@ class MapsStatsService:
             settings.player.min_matches_for_analysis,
         )
 
-    def _is_stale(self, stats: list[MapStat], max_age_minutes: int) -> bool:
+    def _is_stale(self, stats: list[MapStatDomainModel], max_age_minutes: int) -> bool:
         """Проверяет устарел ли кеш."""
         if not stats:
             return True
