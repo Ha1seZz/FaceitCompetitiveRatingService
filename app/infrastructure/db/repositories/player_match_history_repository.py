@@ -2,11 +2,12 @@
 
 from typing import Sequence
 
-from sqlalchemy import delete, func, select, desc
+from sqlalchemy import func, select, desc
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas import MatchHistoryRow
 from app.infrastructure.db.models import PlayerMatchHistory
+from app.schemas import MatchHistoryRow
 
 
 class MatchHistoryRepository:
@@ -42,23 +43,30 @@ class MatchHistoryRepository:
             for (match_id, finished_at_utc, is_win) in result.all()
         ]
 
-    async def replace(self, player_id: str, rows: Sequence[MatchHistoryRow]) -> int:
-        """Полностью заменить историю матчей игрока."""
-        await self.session.execute(
-            delete(PlayerMatchHistory).where(PlayerMatchHistory.player_id == player_id)
-        )
+    async def add_new_matches(
+        self,
+        player_id: str,
+        rows: Sequence[MatchHistoryRow],
+    ) -> None:
+        """Вставляет только новые матчи, игнорируя те, что уже есть в базе."""
+        if not rows:
+            return
 
-        objects = [
-            PlayerMatchHistory(
-                player_id=player_id,
-                match_id=row.match_id,
-                finished_at_utc=row.finished_at_utc,
-                is_win=row.is_win,
-            )
+        insert_data = [
+            {
+                "player_id": player_id,
+                "match_id": row.match_id,
+                "finished_at_utc": row.finished_at_utc,
+                "is_win": row.is_win,
+            }
             for row in rows
         ]
-        self.session.add_all(objects)
-        return len(objects)
+
+        stmt = pg_insert(PlayerMatchHistory).values(insert_data)
+
+        stmt = stmt.on_conflict_do_nothing(index_elements=["player_id", "match_id"])
+
+        await self.session.execute(stmt)
 
     async def count(self, player_id: str) -> int:
         """Вернуть количество строк истории матчей для игрока."""

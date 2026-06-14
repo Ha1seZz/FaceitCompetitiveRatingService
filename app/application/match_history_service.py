@@ -35,6 +35,9 @@ class MatchHistoryService:
         match_limit: int = None,
     ) -> list[MatchHistoryRow]:
         """Возвращает историю матчей игрока."""
+
+        limit = match_limit or settings.match_history.limit
+
         if not self._is_cache_stale(updated_at):  # Если кэш свежий
             return await self.match_history_repo.get_last(
                 player_id=player_id,
@@ -77,14 +80,18 @@ class MatchHistoryService:
                 # Некорректные/неполные данные матча (например, нет finished_at)
                 continue
 
-        await self.match_history_repo.replace(player_id=player_id, rows=rows)
+        await self.match_history_repo.add_new_matches(player_id=player_id, rows=rows)
         await self.player_repo.set_match_history_updated_at(
             player_id,
             datetime.now(timezone.utc),
         )
 
         await self.session.commit()
-        return rows
+
+        return await self.match_history_repo.get_last(  # Возвращаем результат из базы!
+            player_id=player_id,
+            limit=limit,
+        )
 
     def _is_cache_stale(self, updated_at: datetime | None) -> bool:
         """True, если кэш отсутствует или старше TTL."""
