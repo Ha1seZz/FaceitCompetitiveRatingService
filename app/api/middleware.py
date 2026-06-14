@@ -4,47 +4,62 @@ import time
 import uuid
 from contextvars import ContextVar
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi import Request
+from starlette.types import ASGIApp, Scope, Receive, Send
 from loguru import logger
 
 request_id_context_var: ContextVar[str] = ContextVar("request_id", default="system")
 
 
-class LoggingMiddleware(BaseHTTPMiddleware):
-    """Промежуточное ПО для логирования жизненного цикла HTTP-запросов."""
+class ASGIRequestLoggerMiddleware:
+    """Низкоуровневое ASGI-middleware для логирования запросов без буферизации."""
 
-    async def dispatch(self, request: Request, call_next):
-        """Перехватывает HTTP-запрос, логирует его этапы и замеряет время выполнения."""
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        """Перехватывает запрос на уровне ASGI, логирует результат одной строкой."""
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
 
         req_id = str(uuid.uuid4())[:8]
         token = request_id_context_var.set(req_id)
-
         start_time = time.time()
+
+        status_code_container = [500]
+
+        async def send_wrapper(message: dict):
+            """Перехватывает отправку сообщений клиенту для извлечения статус-кода."""
+            if message["type"] == "http.response.start":
+                status_code_container[0] = message["status"]
+            await send(message)
+
+        method = scope.get("method", "UNKNOWN")
+        path = scope.get("path", "UNKNOWN")
+        query_string = scope.get("query_string", b"").decode("utf-8")
+        full_path = f"{path}?{query_string}" if query_string else path
 
         with logger.contextualize(request_id=req_id):
             try:
-                response = await call_next(request)
+                await self.app(scope, receive, send_wrapper)
                 process_time = (time.time() - start_time) * 1000
+
                 logger.info(
                     "Запрос завершен: {method} {path} - "
                     "Статус: {status_code} - Время: {process_time:.2f}ms",
-                    method=request.method,
-                    path=request.url.path,
-                    status_code=response.status_code,
+                    method=method,
+                    path=full_path,
+                    status_code=status_code_container[0],
                     process_time=process_time,
                 )
-
-                response.headers["X-Request-ID"] = req_id
-                return response
 
             except Exception as e:
                 process_time = (time.time() - start_time) * 1000
                 logger.exception(
                     "Ошибка при обработке запроса: {method} {path} - "
                     "Время: {process_time:.2f}ms. Причина: {reason}",
-                    method=request.method,
-                    path=request.url.path,
+                    method=method,
+                    path=path,
                     process_time=process_time,
                     reason=str(e),
                 )

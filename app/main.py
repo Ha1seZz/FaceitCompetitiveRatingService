@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from app.core.settings import db_helper
 from app.api import router as api_router
 from app.api.exception_handlers import setup_exception_handlers
-from app.api.middleware import LoggingMiddleware
+from app.api.middleware import ASGIRequestLoggerMiddleware
 from app.core.logger import setup_logging
 from app.core.config import settings
 
@@ -59,7 +59,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(LoggingMiddleware)
+app.add_middleware(ASGIRequestLoggerMiddleware)
 
 setup_exception_handlers(app)
 
@@ -76,4 +76,4 @@ async def httpx_status_error_handler(request: Request, exc: httpx.HTTPStatusErro
 
 
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", reload=True)
+    uvicorn.run("app.main:app", reload=True, access_log=False)
