@@ -20,6 +20,7 @@ class TimeAnalysisService:
     async def analyze(self, nickname) -> TimeWindowSnapshot:
         """Возвращает рекомендацию 'когда лучше играть' по истории матчей (окно в UTC)."""
         player = await self.player_service.get_or_create_player(nickname=nickname)
+
         rows = await self.match_history_service.get_or_fetch_match_history(
             player_id=player.player_id,
             updated_at=player.match_history_updated_at,

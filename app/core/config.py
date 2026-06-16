@@ -63,7 +63,7 @@ class PlayerSettings(BaseModel):
 class MatchHistorySettings(BaseModel):
     """Настройки кэширования истории матчей Faceit."""
 
-    limit: int = 1000
+    limit: int = 500
     ttl_seconds: int = 86400  # 24h
     refresh_timeout: int = 15
     max_retries: int = 1
