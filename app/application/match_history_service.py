@@ -1,9 +1,8 @@
 """Сервис кэширования истории матчей игрока."""
 
 from datetime import datetime, timezone
-import asyncio
+from typing import Any, Awaitable, Callable
 
-import httpx
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,11 +12,12 @@ from app.infrastructure.db.repositories import MatchHistoryRepository, PlayerRep
 from app.infrastructure.faceit.client import FaceitClient
 from app.core.config import settings
 from app.core.settings import db_helper
-from app.core.exceptions import ExternalServiceUnavailable
 
 
 class MatchHistoryService:
     """Application-сервис: загрузка/кэширование истории матчей игрока для аналитики."""
+
+    _updating_players: set[str] = set()
 
     def __init__(
         self,
@@ -30,13 +30,14 @@ class MatchHistoryService:
         self.player_repo = player_repo
         self.faceit_client = faceit_client
         self.session = session
-        self._updating_players: set[str] = set()
-        self._background_tasks: set[asyncio.Task] = set()
 
     async def get_or_fetch_match_history(
         self,
         player_id: str,
         updated_at: datetime,
+        enqueue_background_task: Callable[
+            [Callable[..., Awaitable[None]], Any], None
+        ] = None,
         match_limit: int = None,
     ) -> list[MatchHistoryRow]:
         """Возвращает историю матчей игрока."""
@@ -50,28 +51,33 @@ class MatchHistoryService:
         if not self._is_cache_stale(updated_at):  # Если кэш свежий - сразу отдаем его
             return cached_rows
 
-        if cached_rows:  # Если протух - возвращаем старые данные, обновление - в фон
-            if player_id not in self._updating_players:
-                self._updating_players.add(player_id)
-                task = asyncio.create_task(
-                    self._refresh_match_history_bg(player_id, limit)
+        if (
+            cached_rows
+        ):  # Если есть кэш, пусть и протухший — отдаем его, а обновление суем в фон
+            if (
+                player_id not in self.__class__._updating_players
+                and enqueue_background_task
+            ):
+                self.__class__._updating_players.add(player_id)
+
+                enqueue_background_task(
+                    self.__class__._refresh_match_history_bg,
+                    player_id,
+                    limit,
+                    self.faceit_client,
                 )
-                self._background_tasks.add(task)
-                task.add_done_callback(self._background_tasks.discard)
             return cached_rows
 
+        # Если кэша вообще нет — жесткий синк
         await self._refresh_match_history_sync(player_id, limit)
         return await self.match_history_repo.get_last(player_id=player_id, limit=limit)
 
     async def _refresh_match_history_sync(self, player_id: str, limit: int) -> None:
         """Синхронное обновление кэша (для новых игроков)."""
-        try:
-            raw_matches = await self.faceit_client.get_player_match_history(
-                player_id,
-                max_matches=limit,
-            )
-        except (ExternalServiceUnavailable, httpx.HTTPError):
-            return
+        raw_matches = await self.faceit_client.get_player_match_history(
+            player_id,
+            max_matches=limit,
+        )
 
         rows = self._parse_raw_matches(raw_matches, player_id)
         await self.match_history_repo.add_new_matches(player_id=player_id, rows=rows)
@@ -81,18 +87,25 @@ class MatchHistoryService:
         )
         await self.session.commit()
 
-    async def _refresh_match_history_bg(self, player_id: str, limit: int) -> None:
-        """Фоновое обновление кэша (выполняется после отправки HTTP-ответа)."""
+    @classmethod
+    async def _refresh_match_history_bg(
+        cls,
+        player_id: str,
+        limit: int,
+        faceit_client: FaceitClient,
+    ) -> None:
+        """Автономная фоновая задача. Создает свою собственную изолированную сессию."""
+
         async with db_helper.session_factory() as session:
             bg_match_repo = MatchHistoryRepository(session)
             bg_player_repo = PlayerRepository(session)
 
             try:
-                raw_matches = await self.faceit_client.get_player_match_history(
+                raw_matches = await faceit_client.get_player_match_history(
                     player_id,
                     max_matches=limit,
                 )
-                rows = self._parse_raw_matches(raw_matches, player_id)
+                rows = cls._parse_raw_matches_static(raw_matches, player_id)
 
                 await bg_match_repo.add_new_matches(
                     player_id=player_id,
@@ -105,7 +118,7 @@ class MatchHistoryService:
 
                 await session.commit()
                 logger.info(
-                    "Фоновое обновление истории матчей завершено для {player_id}",
+                    "Фоновое обновление успешно завершено для {player_id}",
                     player_id=player_id,
                 )
 
@@ -118,10 +131,10 @@ class MatchHistoryService:
                 )
 
             finally:
-                self._updating_players.discard(player_id)
+                cls._updating_players.discard(player_id)
 
-    def _parse_raw_matches(
-        self,
+    @staticmethod
+    def _parse_raw_matches_static(
         raw_matches: list,
         player_id: str,
     ) -> list[MatchHistoryRow]:

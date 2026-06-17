@@ -27,11 +27,16 @@ class ASGIRequestLoggerMiddleware:
         start_time = time.time()
 
         status_code_container = [500]
+        response_time = [None]
 
         async def send_wrapper(message: dict):
             """Перехватывает отправку сообщений клиенту для извлечения статус-кода."""
             if message["type"] == "http.response.start":
                 status_code_container[0] = message["status"]
+
+            if message["type"] == "http.response.body" and response_time[0] is None:
+                response_time[0] = (time.time() - start_time) * 1000
+
             await send(message)
 
         method = scope.get("method", "UNKNOWN")
@@ -42,25 +47,27 @@ class ASGIRequestLoggerMiddleware:
         with logger.contextualize(request_id=req_id):
             try:
                 await self.app(scope, receive, send_wrapper)
-                process_time = (time.time() - start_time) * 1000
+                total_time = (time.time() - start_time) * 1000
+                resp_time = response_time[0] or total_time
 
                 logger.info(
                     "Запрос завершен: {method} {path} - "
-                    "Статус: {status_code} - Время: {process_time:.2f}ms",
+                    "Статус: {status_code} - Ответ клиенту: {resp_time:.2f}ms (Всего с фоном: {total_time:.2f}ms)",
                     method=method,
                     path=full_path,
                     status_code=status_code_container[0],
-                    process_time=process_time,
+                    resp_time=resp_time,
+                    total_time=total_time,
                 )
 
             except Exception as e:
-                process_time = (time.time() - start_time) * 1000
+                total_time = (time.time() - start_time) * 1000
                 logger.exception(
                     "Ошибка при обработке запроса: {method} {path} - "
-                    "Время: {process_time:.2f}ms. Причина: {reason}",
+                    "Время: {total_time:.2f}ms. Причина: {reason}",
                     method=method,
                     path=path,
-                    process_time=process_time,
+                    total_time=total_time,
                     reason=str(e),
                 )
                 raise

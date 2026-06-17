@@ -1,6 +1,6 @@
 """HTTP-эндпоинты игроков: список/профиль/карты/анализ/удаление."""
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, BackgroundTasks, status
 
 from app.application import (
     PlayerService,
@@ -81,12 +81,16 @@ async def analyze_player(
 @router.get("/when-to-play/{nickname}", response_model=WhenToPlayInsight)
 async def when_to_play(
     nickname: str,
+    background_tasks: BackgroundTasks,
     time_analysis_service: TimeAnalysisService = Depends(get_time_analysis_service),
 ):
     """Возвращает рекомендацию "когда лучше играть" для указанного игрока в формате UTC."""
-    best_window = await time_analysis_service.analyze(nickname)
-    end_hour = (best_window.start_hour + best_window.window_size_hours) % 24
+    best_window = await time_analysis_service.analyze(
+        nickname=nickname,
+        enqueue_background_task=background_tasks.add_task,
+    )
 
+    end_hour = (best_window.start_hour + best_window.window_size_hours) % 24
     return WhenToPlayInsight(
         start_hour=best_window.start_hour,
         end_hour=end_hour,
