@@ -1,6 +1,6 @@
 """HTTP-эндпоинты игроков: список/профиль/карты/анализ/удаление."""
 
-from fastapi import APIRouter, Depends, Query, BackgroundTasks, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.application import (
     PlayerService,
@@ -44,7 +44,7 @@ async def get_player_profile(
     player_service: PlayerService = Depends(get_player_service),
 ):
     """Получить профиль игрока (данные кэшируются на 1 час)."""
-    return await player_service.get_or_create_player(nickname=nickname)
+    return await player_service.get_or_fetch_player(nickname=nickname)
 
 
 @router.get("/elo-points/{nickname}", response_model=PlayerCSRating)
@@ -53,7 +53,7 @@ async def get_player_elo_points(
     player_service: PlayerService = Depends(get_player_service),
 ):
     """Получить количество elo и уровень мастерства игрока."""
-    return await player_service.get_or_create_player(nickname=nickname)
+    return await player_service.get_or_fetch_player(nickname=nickname)
 
 
 @router.get("/maps-stats/{nickname}", response_model=list[MapStatsResponse])
@@ -63,7 +63,7 @@ async def get_player_maps_stats(
     maps_service: MapsStatsService = Depends(get_maps_stats_service),
 ):
     """Обеспечить наличие игрока в БД и получить его статистику по картам."""
-    player = await player_service.get_or_create_player(nickname=nickname)
+    player = await player_service.get_or_fetch_player(nickname=nickname)
     return await maps_service.get_or_fetch_maps_stats(player.player_id)
 
 
@@ -74,23 +74,19 @@ async def analyze_player(
     maps_service: MapsStatsService = Depends(get_maps_stats_service),
 ):
     """Выполняет комплексный анализ для выявления сильной и слабой карты игрока."""
-    player = await player_service.get_or_create_player(nickname=nickname)
+    player = await player_service.get_or_fetch_player(nickname=nickname)
     return await maps_service.analyze(player.player_id)
 
 
 @router.get("/when-to-play/{nickname}", response_model=WhenToPlayInsight)
 async def when_to_play(
     nickname: str,
-    background_tasks: BackgroundTasks,
     time_analysis_service: TimeAnalysisService = Depends(get_time_analysis_service),
 ):
     """Возвращает рекомендацию "когда лучше играть" для указанного игрока в формате UTC."""
-    best_window = await time_analysis_service.analyze(
-        nickname=nickname,
-        enqueue_background_task=background_tasks.add_task,
-    )
-
+    best_window = await time_analysis_service.analyze(nickname)
     end_hour = (best_window.start_hour + best_window.window_size_hours) % 24
+
     return WhenToPlayInsight(
         start_hour=best_window.start_hour,
         end_hour=end_hour,

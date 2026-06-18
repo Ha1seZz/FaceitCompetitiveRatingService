@@ -1,7 +1,7 @@
 """Зависимости модуля игроков."""
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends
+from fastapi import BackgroundTasks, Depends
 
 from app.application import (
     MapsStatsService,
@@ -32,6 +32,7 @@ async def get_player_repository(
 
 
 async def get_player_service(
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(db_helper.session_dependency),
     repository: PlayerRepository = Depends(get_player_repository),
     faceit_client: FaceitClient = Depends(get_faceit_client),
@@ -41,6 +42,7 @@ async def get_player_service(
         session=session,
         repository=repository,
         faceit_client=faceit_client,
+        bg_tasks=background_tasks,
     )
 
 
@@ -72,6 +74,7 @@ async def get_match_history_repository(
 
 
 async def get_match_history_service(
+    background_tasks: BackgroundTasks,
     match_history_repo: MatchHistoryRepository = Depends(get_match_history_repository),
     player_repo: PlayerRepository = Depends(get_player_repository),
     faceit_client: FaceitClient = Depends(get_faceit_client),
@@ -83,6 +86,7 @@ async def get_match_history_service(
         player_repo=player_repo,
         faceit_client=faceit_client,
         session=session,
+        bg_tasks=background_tasks,
     )
 
 

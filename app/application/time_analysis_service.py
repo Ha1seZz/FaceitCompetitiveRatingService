@@ -1,7 +1,5 @@
 """Use-case: анализ "когда лучше играть" по истории матчей игрока."""
 
-from typing import Callable
-
 from app.domain.time_analysis.models import MatchTimeSnapshot, TimeWindowSnapshot
 from app.domain.time_analysis.analysis import analyze_play_time
 from app.application.match_history_service import MatchHistoryService
@@ -19,18 +17,13 @@ class TimeAnalysisService:
         self.player_service = player_service
         self.match_history_service = match_history_service
 
-    async def analyze(
-        self,
-        nickname: str,
-        enqueue_background_task: Callable[..., None] | None = None,
-    ) -> TimeWindowSnapshot:
+    async def analyze(self, nickname: str) -> TimeWindowSnapshot:
         """Возвращает рекомендацию 'когда лучше играть' по истории матчей (окно в UTC)."""
-        player = await self.player_service.get_or_create_player(nickname=nickname)
+        player = await self.player_service.get_or_fetch_player(nickname=nickname)
 
         rows = await self.match_history_service.get_or_fetch_match_history(
             player_id=player.player_id,
             updated_at=player.match_history_updated_at,
-            enqueue_background_task=enqueue_background_task,
         )
 
         snapshots = [
