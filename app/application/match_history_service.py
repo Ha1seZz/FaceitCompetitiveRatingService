@@ -68,7 +68,12 @@ class MatchHistoryService:
         if limit > fast_limit:
             if player_id not in self.__class__._updating_players:
                 self.__class__._updating_players.add(player_id)
-                self.bg_tasks.add_task(self._refresh_match_history_bg, player_id, limit)
+                self.bg_tasks.add_task(
+                    self._refresh_match_history_bg,
+                    player_id,
+                    limit,
+                    start_offset=fast_limit,
+                )
 
         return await self.match_history_repo.get_last(player_id=player_id, limit=limit)
 
@@ -81,16 +86,13 @@ class MatchHistoryService:
 
         rows = self._parse_raw_matches_static(raw_matches, player_id)
         await self.match_history_repo.add_new_matches(player_id=player_id, rows=rows)
-        await self.player_repo.set_match_history_updated_at(
-            player_id,
-            datetime.now(timezone.utc),
-        )
         await self.session.commit()
 
     async def _refresh_match_history_bg(
         self,
         player_id: str,
         limit: int,
+        start_offset: int = 0,
     ) -> None:
         """Автономная фоновая задача. Создает свою собственную изолированную сессию."""
 
@@ -100,13 +102,15 @@ class MatchHistoryService:
 
             try:
                 raw_matches = await self.faceit_client.get_player_match_history(
-                    player_id, max_matches=limit
+                    player_id,
+                    max_matches=limit,
+                    start_offset=start_offset,
                 )
                 rows = self._parse_raw_matches_static(raw_matches, player_id)
-
                 await bg_match_repo.add_new_matches(player_id=player_id, rows=rows)
                 await bg_player_repo.set_match_history_updated_at(
-                    player_id, datetime.now(timezone.utc)
+                    player_id,
+                    datetime.now(timezone.utc),
                 )
 
                 await session.commit()
@@ -124,7 +128,7 @@ class MatchHistoryService:
                 )
 
             finally:
-                self._updating_players.discard(player_id)
+                self.__class__._updating_players.discard(player_id)
 
     @staticmethod
     def _parse_raw_matches_static(

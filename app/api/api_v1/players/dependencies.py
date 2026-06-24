@@ -14,11 +14,6 @@ from app.infrastructure.db.repositories import (
     MatchHistoryRepository,
     PlayerRepository,
 )
-from app.infrastructure.db.repositories import (
-    MapsStatsRepository,
-    MatchHistoryRepository,
-    PlayerRepository,
-)
 from app.infrastructure.faceit.dependencies import get_faceit_client
 from app.infrastructure.faceit.client import FaceitClient
 from app.core.settings import db_helper

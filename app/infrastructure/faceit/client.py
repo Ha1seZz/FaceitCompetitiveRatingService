@@ -57,12 +57,13 @@ class FaceitClient:
         player_id: str,
         game: str = "cs2",
         max_matches: int = 500,
+        start_offset: int = 0,
     ) -> list[dict]:
         """Загружает историю матчей игрока из Faceit."""
         limit = 100
         all_matches: list[dict] = []
 
-        for offset in range(0, max_matches, limit):
+        for offset in range(start_offset, max_matches, limit):
             async with self._global_semaphore:
                 logger.debug(
                     "Запрос пачки матчей (offset={offset}) для {player_id}",
