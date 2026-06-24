@@ -4,7 +4,6 @@ from fastapi import Depends, Request
 import httpx
 
 from app.infrastructure.faceit.client import FaceitClient
-from app.core.config import settings
 
 
 async def get_httpx_client(request: Request) -> httpx.AsyncClient:  # type: ignore

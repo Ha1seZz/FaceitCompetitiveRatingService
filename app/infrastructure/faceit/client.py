@@ -3,11 +3,14 @@
 import asyncio
 
 import httpx
+from loguru import logger
 from app.core.exceptions import ExternalServiceUnavailable, FaceitEntityNotFound
 
 
 class FaceitClient:
     """Асинхронный клиент для выполнения запросов к API Faceit."""
+
+    _global_semaphore = asyncio.Semaphore(5)
 
     def __init__(self, client: httpx.AsyncClient):
         self.client = client
@@ -53,32 +56,38 @@ class FaceitClient:
         self,
         player_id: str,
         game: str = "cs2",
-        max_matches: int = 1000,
+        max_matches: int = 500,
     ) -> list[dict]:
         """Загружает историю матчей игрока из Faceit."""
         limit = 100
-        offsets = list(range(0, max_matches, limit))
-        semaphore = asyncio.Semaphore(5)
+        all_matches: list[dict] = []
 
-        async def fetch_page(offset: int) -> list[dict]:
-            async with semaphore:
+        for offset in range(0, max_matches, limit):
+            async with self._global_semaphore:
+                logger.debug(
+                    "Запрос пачки матчей (offset={offset}) для {player_id}",
+                    offset=offset,
+                    player_id=player_id,
+                )
                 try:
                     response = await self.client.get(
                         f"/players/{player_id}/history",
                         params={"game": game, "offset": offset, "limit": limit},
                     )
                     data = await self._handle_response(response, "Match history")
-                    return data.get("items", []) or []
-                except Exception:
-                    return []
+                    page = data.get("items", []) or []
+                except Exception as e:
+                    logger.error(
+                        "Ошибка при загрузке истории матчей для {player_id} на offset={offset}: {e}",
+                        player_id=player_id,
+                        offset=offset,
+                        e=e,
+                    )
+                    raise
 
-        tasks = [fetch_page(offset) for offset in offsets]
-        pages = await asyncio.gather(*tasks)
-
-        all_matches: list[dict] = []
-        for page in pages:
             if not page:
                 break
+
             all_matches.extend(page)
 
             if len(page) < limit:

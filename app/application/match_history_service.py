@@ -50,7 +50,7 @@ class MatchHistoryService:
         if not self._is_cache_stale(updated_at):  # Если кэш свежий - сразу отдаем его
             return cached_rows
 
-        # Если кэш протух, но данные есть - отдаем старые и обновляем в фоне
+        # Если кэш есть, но протух (Stale-While-Revalidate)
         if cached_rows:
             if player_id not in self.__class__._updating_players:
                 self.__class__._updating_players.add(player_id)
@@ -58,12 +58,18 @@ class MatchHistoryService:
                     self._refresh_match_history_bg,
                     player_id,
                     limit,
-                    self.faceit_client,
                 )
             return cached_rows
 
         # Если кэша вообще нет — жесткий синк
-        await self._refresh_match_history_sync(player_id, limit)
+        fast_limit = 100
+        await self._refresh_match_history_sync(player_id, fast_limit)
+
+        if limit > fast_limit:
+            if player_id not in self.__class__._updating_players:
+                self.__class__._updating_players.add(player_id)
+                self.bg_tasks.add_task(self._refresh_match_history_bg, player_id, limit)
+
         return await self.match_history_repo.get_last(player_id=player_id, limit=limit)
 
     async def _refresh_match_history_sync(self, player_id: str, limit: int) -> None:

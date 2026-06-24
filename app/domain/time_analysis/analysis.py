@@ -51,12 +51,23 @@ def build_time_snapshot(match: dict[str, Any], player_id: str) -> MatchTimeSnaps
 def analyze_play_time(
     snapshots: list[MatchTimeSnapshot],
     window_size_hours: int = 3,
-    min_matches_in_window: int = 30,
-    min_valid_matches_in_window: int = 20,
 ) -> TimeWindowSnapshot:
-    """Находит лучшее окно по времени суток для игры."""
+    """Находит лучшее окно по времени суток для игры с адаптивными порогами."""
+
+    total_snapshots = len(snapshots)
+
+    if total_snapshots < 30:
+        raise InsufficientDataError(
+            f"Not enough overall data. Need at least 30 matches, got {total_snapshots}."
+        )
+
     if window_size_hours <= 0 or window_size_hours > 24:
         raise ValueError("window_size_hours must be in range 1..24")
+
+    min_matches_in_window = max(10, int(total_snapshots * 0.12))  # Минимум матчей
+    min_valid_matches_in_window = max(
+        5, int(total_snapshots * 0.08)
+    )  # Минимум с изветным результатом
 
     matches_by_hour = defaultdict(int)  # Все матчи (включая is_win=None)
     valid_matches_by_hour = defaultdict(int)  # Матчи с известным исходом
