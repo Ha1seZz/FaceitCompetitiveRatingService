@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy import func, select, update as sql_update
+from sqlalchemy import func, select, delete, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.player.models import PlayerDomainModel
@@ -79,13 +79,9 @@ class PlayerRepository:
         result = await self.session.execute(stmt)
         return self._map_to_domain(result.scalar_one())
 
-    async def delete_player(self, player_id: str) -> bool:
+    async def delete_player(self, nickname: str) -> None:
         """
-        Удаляет игрока из базы данных по его player_id.
-        Возвращает True, если игрок был найден и удален, иначе False.
+        Удаляет игрока из базы данных по его nickname.
         """
-        player = await self.session.get(Player, player_id)
-        if player:
-            await self.session.delete(player)
-            return True
-        return False
+        stmt = delete(Player).where(Player.nickname == nickname)
+        await self.session.execute(stmt)

@@ -38,52 +38,52 @@ async def get_players(
     return await player_service.get_players(limit=limit, offset=offset)
 
 
-@router.get("/profile/{nickname}", response_model=PlayerProfileDetails)
+@router.get("/{nickname}", response_model=PlayerProfileDetails)
 async def get_player_profile(
     nickname: str,
     player_service: PlayerService = Depends(get_player_service),
 ):
-    """Получить профиль игрока (данные кэшируются на 1 час)."""
+    """Получить базовый профиль игрока."""
     return await player_service.get_or_fetch_player(nickname=nickname)
 
 
-@router.get("/elo-points/{nickname}", response_model=PlayerCSRating)
-async def get_player_elo_points(
+@router.get("/{nickname}/rating", response_model=PlayerCSRating)
+async def get_player_rating(
     nickname: str,
     player_service: PlayerService = Depends(get_player_service),
 ):
-    """Получить количество elo и уровень мастерства игрока."""
+    """Получить текущее ELO и уровень игрока."""
     return await player_service.get_or_fetch_player(nickname=nickname)
 
 
-@router.get("/maps-stats/{nickname}", response_model=list[MapStatsResponse])
+@router.get("/{nickname}/maps", response_model=list[MapStatsResponse])
 async def get_player_maps_stats(
     nickname: str,
     player_service: PlayerService = Depends(get_player_service),
     maps_service: MapsStatsService = Depends(get_maps_stats_service),
 ):
-    """Обеспечить наличие игрока в БД и получить его статистику по картам."""
+    """Получить сырую статистику по картам."""
     player = await player_service.get_or_fetch_player(nickname=nickname)
     return await maps_service.get_or_fetch_maps_stats(player.player_id)
 
 
-@router.get("/analyze/{nickname}", response_model=MapsInsight)
-async def analyze_player(
+@router.get("/{nickname}/insights/maps", response_model=MapsInsight)
+async def get_maps_insight(
     nickname: str,
     player_service: PlayerService = Depends(get_player_service),
     maps_service: MapsStatsService = Depends(get_maps_stats_service),
 ):
-    """Выполняет комплексный анализ для выявления сильной и слабой карты игрока."""
+    """Аналитика: лучшие и худшие карты."""
     player = await player_service.get_or_fetch_player(nickname=nickname)
     return await maps_service.analyze(player.player_id)
 
 
-@router.get("/when-to-play/{nickname}", response_model=WhenToPlayInsight)
-async def when_to_play(
+@router.get("/{nickname}/insights/schedule", response_model=WhenToPlayInsight)
+async def get_schedule_insight(
     nickname: str,
     time_analysis_service: TimeAnalysisService = Depends(get_time_analysis_service),
 ):
-    """Возвращает рекомендацию "когда лучше играть" для указанного игрока в формате UTC."""
+    """Аналитика: оптимальное время для игры в формате UTC."""
     best_window = await time_analysis_service.analyze(nickname)
     end_hour = (best_window.start_hour + best_window.window_size_hours) % 24
 
@@ -96,10 +96,10 @@ async def when_to_play(
     )
 
 
-@router.delete("/{player_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{nickname}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_player(
-    player_id: str,
+    nickname: str,
     player_service: PlayerService = Depends(get_player_service),
 ):
     """Удалить игрока из локальной базы данных."""
-    await player_service.delete_player(player_id=player_id)
+    await player_service.delete_player_by_nickname(nickname=nickname)

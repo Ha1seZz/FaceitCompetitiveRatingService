@@ -92,13 +92,9 @@ class PlayerService:
         """Получает список всех игроков."""
         return await self.repository.get_all(limit=limit, offset=offset)
 
-    async def delete_player(self, player_id: str) -> None:
+    async def delete_player_by_nickname(self, nickname: str) -> None:
         """Удаляет игрока или выбрасывает доменную ошибку, если игрок не найден."""
-        success = await self.repository.delete_player(player_id=player_id)
-
-        if not success:
-            raise PlayerNotFoundError(player_id=player_id)
-
+        await self.repository.delete_player(nickname=nickname)
         await self.session.commit()
 
     def _is_cache_stale(self, updated_at: datetime | None) -> bool:
