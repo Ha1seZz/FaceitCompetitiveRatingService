@@ -4,8 +4,6 @@ __all__ = (
     "MapInsightItem",
     "MapsInsight",
     "MapReliableInsight",
-    "MapStatsBase",
-    "MapStatsCreate",
     "MapStatsResponse",
     "MatchHistoryRow",
     "PlayerProfileDetails",
@@ -16,7 +14,7 @@ __all__ = (
 )
 
 from .maps_insight import MapInsightItem, MapsInsight, MapReliableInsight
-from .maps_stats import MapStatsBase, MapStatsCreate, MapStatsResponse
+from .maps_stats import MapStatsResponse
 from .players_match_history import MatchHistoryRow
 from .players import PlayerProfileDetails, PlayerCSRating, PlayerCreate, PlayerPublic
 from .time_insight import WhenToPlayInsight
