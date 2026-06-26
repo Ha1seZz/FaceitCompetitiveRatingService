@@ -3,8 +3,9 @@
 from fastapi import APIRouter, Depends, Query, status
 
 from app.application import (
-    PlayerService,
     MapsStatsService,
+    PlayerService,
+    PlayerStatsService,
     TimeAnalysisService,
 )
 from app.core.config import settings
@@ -14,11 +15,13 @@ from app.schemas import (
     PlayerProfileDetails,
     PlayerCSRating,
     PlayerPublic,
+    PlayerStatsInsight,
     WhenToPlayInsight,
 )
 from .dependencies import (
     get_maps_stats_service,
     get_player_service,
+    get_player_stats_service,
     get_time_analysis_service,
 )
 
@@ -54,6 +57,17 @@ async def get_player_rating(
 ):
     """Получить текущее ELO и уровень игрока."""
     return await player_service.get_or_fetch_player(nickname=nickname)
+
+
+@router.get("/{nickname}/stats", response_model=PlayerStatsInsight)
+async def get_player_stats(
+    nickname: str,
+    player_service: PlayerService = Depends(get_player_service),
+    player_stats_service: PlayerStatsService = Depends(get_player_stats_service),
+):
+    """Получить агрегированную статистику игрока за последние 30 матчей."""
+    player = await player_service.get_or_fetch_player(nickname=nickname)
+    return await player_stats_service.get_or_fetch_player_stats(player.player_id)
 
 
 @router.get("/{nickname}/maps", response_model=list[MapStatsResponse])

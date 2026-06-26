@@ -5,14 +5,16 @@ from fastapi import BackgroundTasks, Depends
 
 from app.application import (
     MapsStatsService,
-    PlayerService,
-    TimeAnalysisService,
     MatchHistoryService,
+    PlayerService,
+    PlayerStatsService,
+    TimeAnalysisService,
 )
 from app.infrastructure.db.repositories import (
     MapsStatsRepository,
     MatchHistoryRepository,
     PlayerRepository,
+    PlayerStatsRepository,
 )
 from app.infrastructure.faceit.dependencies import get_faceit_client
 from app.infrastructure.faceit.client import FaceitClient
@@ -26,16 +28,38 @@ async def get_player_repository(
     return PlayerRepository(session=session)
 
 
+async def get_player_stats_repository(
+    session: AsyncSession = Depends(db_helper.session_dependency),
+) -> PlayerStatsRepository:
+    """Создает экземпляр репозитория игроков."""
+    return PlayerStatsRepository(session=session)
+
+
 async def get_player_service(
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(db_helper.session_dependency),
-    repository: PlayerRepository = Depends(get_player_repository),
+    player_repo: PlayerRepository = Depends(get_player_repository),
     faceit_client: FaceitClient = Depends(get_faceit_client),
 ) -> PlayerService:
     """Создает экземпляр сервиса обработки логики игроков."""
     return PlayerService(
         session=session,
-        repository=repository,
+        player_repo=player_repo,
+        faceit_client=faceit_client,
+        bg_tasks=background_tasks,
+    )
+
+
+async def get_player_stats_service(
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    stats_repo: PlayerStatsRepository = Depends(get_player_stats_repository),
+    faceit_client: FaceitClient = Depends(get_faceit_client),
+) -> PlayerStatsService:
+    """Создает экземпляр сервиса обработки статистики игроков."""
+    return PlayerStatsService(
+        session=session,
+        stats_repo=stats_repo,
         faceit_client=faceit_client,
         bg_tasks=background_tasks,
     )
@@ -50,13 +74,13 @@ async def get_maps_stats_repository(
 
 async def get_maps_stats_service(
     session: AsyncSession = Depends(db_helper.session_dependency),
-    repository: MapsStatsRepository = Depends(get_maps_stats_repository),
+    maps_stats_repo: MapsStatsRepository = Depends(get_maps_stats_repository),
     faceit_client: FaceitClient = Depends(get_faceit_client),
 ) -> MapsStatsService:
     """Создает экземпляр сервиса статистики по картам."""
     return MapsStatsService(
         session=session,
-        repository=repository,
+        maps_stats_repo=maps_stats_repo,
         faceit_client=faceit_client,
     )
 

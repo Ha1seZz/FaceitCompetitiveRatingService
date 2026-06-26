@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.settings.base import Base
 
 if TYPE_CHECKING:
-    from app.infrastructure.db.models import MapStat, PlayerMatchHistory
+    from app.infrastructure.db.models import MapStat, PlayerMatchHistory, PlayerStats
 
 
 class Player(Base):
@@ -51,6 +51,11 @@ class Player(Base):
     )
 
     match_history: Mapped[list["PlayerMatchHistory"]] = relationship(
+        back_populates="player",
+        cascade="all, delete-orphan",
+    )
+
+    stats: Mapped["PlayerStats"] = relationship(
         back_populates="player",
         cascade="all, delete-orphan",
     )

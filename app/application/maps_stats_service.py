@@ -18,16 +18,16 @@ from app.core.config import settings
 
 
 class MapsStatsService:
-    """Класс-сервис для получения и кеширования статистики по картам."""
+    """Application-сервис для получения и кеширования статистики по картам."""
 
     def __init__(
         self,
         session: AsyncSession,
-        repository: MapsStatsRepository,
+        maps_stats_repo: MapsStatsRepository,
         faceit_client: FaceitClient,
     ):
         self.session = session
-        self.repository = repository
+        self.maps_stats_repo = maps_stats_repo
         self.faceit_client = faceit_client
 
     async def get_or_fetch_maps_stats(
@@ -36,7 +36,7 @@ class MapsStatsService:
         max_age_minutes: int = 30,
     ) -> list[MapStatDomainModel]:
         """Получить статистику по картам для игрока."""
-        cached_stats = await self.repository.get_by_player_id(player_id)
+        cached_stats = await self.maps_stats_repo.get_by_player_id(player_id)
 
         if cached_stats and not self._is_stale(cached_stats, max_age_minutes):
             return cached_stats
@@ -66,7 +66,7 @@ class MapsStatsService:
                 logger.warning(
                     "Обнаружен дубликат карты {map_name} для режима 5v5. "
                     "Выбираем запись с наибольшим количеством матчей.",
-                    map_name=map_name
+                    map_name=map_name,
                 )
                 # Сравниваем количество матчей, оставляем лучшую запись
                 current_matches = int(segment.get("stats", {}).get("Matches", 0))
@@ -94,7 +94,7 @@ class MapsStatsService:
             parsed_stat["player_id"] = player_id
             insert_data.append(parsed_stat)
 
-        updated_models = await self.repository.bulk_upsert(insert_data)
+        updated_models = await self.maps_stats_repo.bulk_upsert(insert_data)
         await self.session.commit()
         return updated_models
 

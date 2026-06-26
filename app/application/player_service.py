@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import db_helper
 from app.core.config import settings
-from app.core.exceptions import PlayerNotFoundError
 from app.domain.player.models import PlayerDomainModel
 from app.infrastructure.db.repositories import PlayerRepository
 from app.infrastructure.faceit.client import FaceitClient
@@ -16,19 +15,19 @@ from app.schemas.players import PlayerCreate
 
 
 class PlayerService:
-    """Класс-сервис для обработки операций с игроками."""
+    """Application-сервис для обработки операций с игроками."""
 
     _updating_profiles: set[str] = set()
 
     def __init__(
         self,
         session: AsyncSession,
-        repository: PlayerRepository,
+        player_repo: PlayerRepository,
         faceit_client: FaceitClient,
         bg_tasks: BackgroundTasks,
     ):
         self.session = session
-        self.repository = repository
+        self.player_repo = player_repo
         self.faceit_client = faceit_client
         self.bg_tasks = bg_tasks
 
@@ -39,26 +38,26 @@ class PlayerService:
         """Синхронизирует данные, полученные из внешнего API, сохраняя в БД."""
         validated = PlayerCreate(**player_data)
         clean_data = validated.model_dump(exclude_unset=True)
-        player_domain = await self.repository.upsert_from_faceit_data(clean_data)
+        player_domain = await self.player_repo.upsert_from_faceit_data(clean_data)
         await self.session.commit()
         return player_domain
 
     async def get_or_fetch_player(self, nickname: str) -> PlayerDomainModel:
-        """Возвращает профиль. Если его нет/устарел — обновляет в фоне."""
-        player = await self.repository.get_by_nickname(nickname)
+        """Возвращает профиль. Если его нет/устарел - обновляет в фоне."""
+        player = await self.player_repo.get_by_nickname(nickname)
 
         if player:  # Если игрок есть в базе
             if not self._is_cache_stale(player.updated_at):  # Если кэш свежий
                 return player
 
-            # Кэш устарел. Проверяем, не обновляется ли он уже в фоне
-            if nickname not in self.__class__._updating_profiles:
+            # Если кэш есть, но протух (Stale-While-Revalidate)
+            elif nickname not in self.__class__._updating_profiles:
                 self.__class__._updating_profiles.add(nickname)
                 self.bg_tasks.add_task(self._refresh_player_bg, nickname)
 
             return player  # Отдаем старые данные мгновенно
 
-        # Игрока нет в базе
+        # Если игрока вообще нет — жесткий синк
         raw_player_data = await self.faceit_client.get_player(nickname)
         return await self.create_or_update_from_faceit(player_data=raw_player_data)
 
@@ -90,11 +89,11 @@ class PlayerService:
 
     async def get_players(self, limit: int, offset: int) -> list[PlayerDomainModel]:
         """Получает список всех игроков."""
-        return await self.repository.get_all(limit=limit, offset=offset)
+        return await self.player_repo.get_all(limit=limit, offset=offset)
 
     async def delete_player_by_nickname(self, nickname: str) -> None:
         """Удаляет игрока или выбрасывает доменную ошибку, если игрок не найден."""
-        await self.repository.delete_player(nickname=nickname)
+        await self.player_repo.delete_player(nickname=nickname)
         await self.session.commit()
 
     def _is_cache_stale(self, updated_at: datetime | None) -> bool:

@@ -10,6 +10,7 @@ __all__ = (
     "PlayerCSRating",
     "PlayerCreate",
     "PlayerPublic",
+    "PlayerStatsInsight",
     "WhenToPlayInsight",
 )
 
@@ -17,4 +18,5 @@ from .maps_insight import MapInsightItem, MapsInsight, MapReliableInsight
 from .maps_stats import MapStatsResponse
 from .players_match_history import MatchHistoryRow
 from .players import PlayerProfileDetails, PlayerCSRating, PlayerCreate, PlayerPublic
+from .stats_insight import PlayerStatsInsight
 from .time_insight import WhenToPlayInsight

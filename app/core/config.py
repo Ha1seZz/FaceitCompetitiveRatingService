@@ -60,6 +60,18 @@ class PlayerSettings(BaseModel):
         return timedelta(seconds=self.ttl_seconds)
 
 
+class PlayerStatsSettings(BaseModel):
+    """Настройки обработки статистики игрока."""
+
+    min_matches_for_analysis: int = 30
+    ttl_seconds: int = 3600  # 1h
+
+    @property
+    def ttl(self) -> timedelta:
+        """TTL в формате timedelta."""
+        return timedelta(seconds=self.ttl_seconds)
+
+
 class MatchHistorySettings(BaseModel):
     """Настройки кэширования истории матчей Faceit."""
 
@@ -94,6 +106,7 @@ class Settings(BaseSettings):
     db: DbSettings = DbSettings()
     faceit: FaceitSettings = FaceitSettings()
     player: PlayerSettings = PlayerSettings()
+    player_stats: PlayerStatsSettings = PlayerStatsSettings()
     match_history: MatchHistorySettings = MatchHistorySettings()
 
 

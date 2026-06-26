@@ -38,6 +38,19 @@ class FaceitClient:
         )
         return await self._handle_response(response, "Player")
 
+    async def get_player_stats(
+        self,
+        player_id: str,
+        game_id: str = "cs2",
+        max_matches: int = 30,
+    ) -> dict:
+        """Запрашивает необработанную статистику игрока."""
+        response = await self.client.get(
+            f"/players/{player_id}/games/{game_id}/stats",
+            params={"limit": max_matches},
+        )
+        return await self._handle_response(response, "Player stats")
+
     async def get_match(self, match_id: str) -> dict:
         """Запрашивает детальную информацию о матче по его уникальному ID."""
         response = await self.client.get(f"/matches/{match_id}")

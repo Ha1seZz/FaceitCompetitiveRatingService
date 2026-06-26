@@ -47,19 +47,19 @@ class MatchHistoryService:
             limit=limit,
         )
 
-        if not self._is_cache_stale(updated_at):  # Если кэш свежий - сразу отдаем его
-            return cached_rows
+        if cached_rows:  # Если кэш есть
+            if not self._is_cache_stale(updated_at):  # Если кэш свежий
+                return cached_rows
 
-        # Если кэш есть, но протух (Stale-While-Revalidate)
-        if cached_rows:
-            if player_id not in self.__class__._updating_players:
+            # Если кэш есть, но протух (Stale-While-Revalidate)
+            elif player_id not in self.__class__._updating_players:
                 self.__class__._updating_players.add(player_id)
                 self.bg_tasks.add_task(
                     self._refresh_match_history_bg,
                     player_id,
                     limit,
                 )
-            return cached_rows
+            return cached_rows  # Отдаем старые данные мгновенно
 
         # Если кэша вообще нет — жесткий синк
         fast_limit = 100
