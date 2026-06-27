@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class Player(Base):
     nickname: Mapped[str] = mapped_column(unique=True, nullable=False, index=True)
-    country: Mapped[str] = mapped_column(nullable=True, index=True)
+    country: Mapped[str | None] = mapped_column(nullable=True, index=True)
     verified: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     steam_nickname: Mapped[str | None] = mapped_column(nullable=True)
     steam_id_64: Mapped[int | None] = mapped_column(

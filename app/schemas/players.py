@@ -11,7 +11,7 @@ class PlayerProfileDetails(BaseModel):
     """Схема основных данных профиля игрока."""
 
     nickname: str
-    country: str
+    country: str | None = None
     verified: bool
     steam_nickname: str | None = None
     steam_id_64: int | None = None
