@@ -43,7 +43,7 @@ class DbSettings(BaseModel):
 class FaceitSettings(BaseModel):
     """Конфигурация для авторизации и запросов к Faceit Data API."""
 
-    api_key: str = "placeholder"
+    api_key: str
     base_url: str = "https://open.faceit.com/data/v4"
     default_language: str = "ru"
 
@@ -86,6 +86,15 @@ class MatchHistorySettings(BaseModel):
         return timedelta(seconds=self.ttl_seconds)
 
 
+class CorsSettings(BaseModel):
+    """Настройки CORS."""
+
+    allow_origins: list[str] = ["*"]
+    allow_methods: list[str] = ["GET"]
+    allow_headers: list[str] = ["*"]
+    allow_credentials: bool = False
+
+
 class Settings(BaseSettings):
     """
     Глобальный контейнер настроек приложения.
@@ -94,7 +103,7 @@ class Settings(BaseSettings):
     или .env файла. Поддерживает вложенные настройки через разделитель '__'.
     """
 
-    debug: bool = True
+    debug: bool = False
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
@@ -104,10 +113,11 @@ class Settings(BaseSettings):
     )
     api: ApiPrefix = ApiPrefix()
     db: DbSettings = DbSettings()
-    faceit: FaceitSettings = FaceitSettings()
+    faceit: FaceitSettings
     player: PlayerSettings = PlayerSettings()
     player_stats: PlayerStatsSettings = PlayerStatsSettings()
     match_history: MatchHistorySettings = MatchHistorySettings()
+    cors: CorsSettings = CorsSettings()
 
 
 # Глобальный экземпляр настроек для использования в приложении

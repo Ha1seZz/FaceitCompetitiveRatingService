@@ -1,7 +1,7 @@
 """Репозиторий для работы со статистикой игроков в базе данных."""
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.player.models import PlayerStatsDomainModel
@@ -55,6 +55,7 @@ class PlayerStatsRepository:
             kr_ratio=stats.kr_ratio,
             headshots_percent=stats.headshots_percent,
             adr=stats.adr,
+            updated_at=func.now(),
         )
 
         stmt = stmt.on_conflict_do_update(

@@ -2,8 +2,10 @@ from contextlib import asynccontextmanager
 
 import httpx
 import uvicorn
+from loguru import logger
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.settings import db_helper
 from app.api import router as api_router
@@ -59,6 +61,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors.allow_origins,
+    allow_methods=settings.cors.allow_methods,
+    allow_headers=settings.cors.allow_headers,
+    allow_credentials=settings.cors.allow_credentials,
+)
 app.add_middleware(ASGIRequestLoggerMiddleware)
 
 setup_exception_handlers(app)
@@ -69,11 +78,20 @@ app.include_router(api_router)
 @app.exception_handler(httpx.HTTPStatusError)
 async def httpx_status_error_handler(request: Request, exc: httpx.HTTPStatusError):
     """Глобальный обработчик ошибок HTTP-статусов для клиента httpx."""
+
+    logger.error(
+        "External API error | method={method} | url={url} | status={status} | body={body}",
+        method=exc.request.method,
+        url=str(exc.request.url),
+        status=exc.response.status_code,
+        body=exc.response.text,
+    )
+
     return JSONResponse(
         status_code=exc.response.status_code,
-        content={"detail": f"External API error: {exc.response.text}"},
+        content={"detail": f"External API error. Please try again later."},
     )
 
 
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", reload=True, access_log=False)
+    uvicorn.run("app.main:app", reload=settings.debug, access_log=False)

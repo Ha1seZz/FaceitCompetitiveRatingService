@@ -52,7 +52,10 @@ class PlayerStatsService:
 
     async def _refresh_stats_sync(self, player_id: str) -> PlayerStatsDomainModel:
         """Синхронное обновление кэша (для новых игроков)."""
-        raw_data = await self.faceit_client.get_player_stats(player_id=player_id)
+        raw_data = await self.faceit_client.get_player_stats(
+            player_id=player_id,
+            max_matches=settings.player_stats.min_matches_for_analysis,
+        )
         stats_domain = self._map_to_domain(raw_data, player_id)
 
         await self.stats_repo.save_stats(player_id=player_id, stats=stats_domain)
@@ -64,14 +67,17 @@ class PlayerStatsService:
         async with db_helper.session_factory() as session:
             bg_repo = PlayerStatsRepository(session)
             try:
-                raw_data = await self.faceit_client.get_player_stats(player_id)
+                raw_data = await self.faceit_client.get_player_stats(
+                    player_id=player_id,
+                    max_matches=settings.player_stats.min_matches_for_analysis,
+                )
                 stats_domain = self._map_to_domain(raw_data, player_id)
 
                 await bg_repo.save_stats(player_id=player_id, stats=stats_domain)
                 await session.commit()
                 logger.info(
                     "Фоновое обновление статистики успешно: {player_id}",
-                    nickname=player_id,
+                    player_id=player_id,
                 )
             except Exception as e:
                 await session.rollback()
