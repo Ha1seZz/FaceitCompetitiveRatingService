@@ -126,7 +126,9 @@ async def get_schedule_insight(
 
 
 @router.delete("/{nickname}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(settings.rate_limit.expensive)
 async def delete_player(
+    request: Request,
     nickname: str,
     player_service: PlayerService = Depends(get_player_service),
 ):
