@@ -6,13 +6,15 @@ from loguru import logger
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.core.settings import db_helper
 from app.api import router as api_router
 from app.api.exception_handlers import setup_exception_handlers
 from app.api.middleware import ASGIRequestLoggerMiddleware
-from app.core.logger import setup_logging
 from app.core.config import settings
+from app.core.limiter import limiter
+from app.core.logger import setup_logging
 
 
 @asynccontextmanager
@@ -61,6 +63,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+
+app.add_middleware(ASGIRequestLoggerMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors.allow_origins,
@@ -68,7 +73,7 @@ app.add_middleware(
     allow_headers=settings.cors.allow_headers,
     allow_credentials=settings.cors.allow_credentials,
 )
-app.add_middleware(ASGIRequestLoggerMiddleware)
+app.add_middleware(SlowAPIMiddleware)
 
 setup_exception_handlers(app)
 

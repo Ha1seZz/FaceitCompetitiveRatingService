@@ -1,6 +1,6 @@
 """HTTP-эндпоинты игроков: список/профиль/карты/анализ/удаление."""
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.application import (
     MapsStatsService,
@@ -9,6 +9,7 @@ from app.application import (
     TimeAnalysisService,
 )
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.schemas import (
     MapsInsight,
     MapStatsResponse,
@@ -32,7 +33,9 @@ router = APIRouter(
 
 
 @router.get("/", response_model=list[PlayerPublic])
+@limiter.limit(settings.rate_limit.default)
 async def get_players(
+    request: Request,
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
     player_service: PlayerService = Depends(get_player_service),
@@ -42,7 +45,9 @@ async def get_players(
 
 
 @router.get("/{nickname}", response_model=PlayerProfileDetails)
+@limiter.limit(settings.rate_limit.expensive)
 async def get_player_profile(
+    request: Request,
     nickname: str,
     player_service: PlayerService = Depends(get_player_service),
 ):
@@ -51,7 +56,9 @@ async def get_player_profile(
 
 
 @router.get("/{nickname}/rating", response_model=PlayerCSRating)
+@limiter.limit(settings.rate_limit.expensive)
 async def get_player_rating(
+    request: Request,
     nickname: str,
     player_service: PlayerService = Depends(get_player_service),
 ):
@@ -60,7 +67,9 @@ async def get_player_rating(
 
 
 @router.get("/{nickname}/stats", response_model=PlayerStatsInsight)
+@limiter.limit(settings.rate_limit.expensive)
 async def get_player_stats(
+    request: Request,
     nickname: str,
     player_service: PlayerService = Depends(get_player_service),
     player_stats_service: PlayerStatsService = Depends(get_player_stats_service),
@@ -71,7 +80,9 @@ async def get_player_stats(
 
 
 @router.get("/{nickname}/maps", response_model=list[MapStatsResponse])
+@limiter.limit(settings.rate_limit.expensive)
 async def get_player_maps_stats(
+    request: Request,
     nickname: str,
     player_service: PlayerService = Depends(get_player_service),
     maps_service: MapsStatsService = Depends(get_maps_stats_service),
@@ -82,7 +93,9 @@ async def get_player_maps_stats(
 
 
 @router.get("/{nickname}/insights/maps", response_model=MapsInsight)
+@limiter.limit(settings.rate_limit.expensive)
 async def get_maps_insight(
+    request: Request,
     nickname: str,
     player_service: PlayerService = Depends(get_player_service),
     maps_service: MapsStatsService = Depends(get_maps_stats_service),
@@ -93,7 +106,9 @@ async def get_maps_insight(
 
 
 @router.get("/{nickname}/insights/schedule", response_model=WhenToPlayInsight)
+@limiter.limit(settings.rate_limit.expensive)
 async def get_schedule_insight(
+    request: Request,
     nickname: str,
     time_analysis_service: TimeAnalysisService = Depends(get_time_analysis_service),
 ):

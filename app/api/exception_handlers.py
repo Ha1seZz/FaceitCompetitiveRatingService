@@ -2,6 +2,8 @@
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.core.exceptions import (
     FaceitEntityNotFound,
@@ -57,6 +59,10 @@ async def external_service_unavailable_handler(
 
 def setup_exception_handlers(app: FastAPI) -> None:
     """Регистрирует все обработчики кастомных исключений в приложении."""
+    app.add_exception_handler(
+        RateLimitExceeded,
+        _rate_limit_exceeded_handler,
+    )
     app.add_exception_handler(
         FaceitEntityNotFound,
         faceit_entity_not_found_handler,

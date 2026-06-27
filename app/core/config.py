@@ -86,6 +86,13 @@ class MatchHistorySettings(BaseModel):
         return timedelta(seconds=self.ttl_seconds)
 
 
+class RateLimitSettings(BaseModel):
+    """Настройки rate limiting."""
+
+    default: str = "60/minute"
+    expensive: str = "20/minute"  # Эндпоинты с запросами к Faceit API
+
+
 class CorsSettings(BaseModel):
     """Настройки CORS."""
 
@@ -117,6 +124,7 @@ class Settings(BaseSettings):
     player: PlayerSettings = PlayerSettings()
     player_stats: PlayerStatsSettings = PlayerStatsSettings()
     match_history: MatchHistorySettings = MatchHistorySettings()
+    rate_limit: RateLimitSettings = RateLimitSettings()
     cors: CorsSettings = CorsSettings()
 
 
