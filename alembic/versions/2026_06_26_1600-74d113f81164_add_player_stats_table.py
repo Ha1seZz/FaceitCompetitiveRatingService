@@ -1,7 +1,7 @@
 """add player_stats table
 
 Revision ID: 74d113f81164
-Revises: cba6c624a835
+Revises: 7cc6b1814833
 Create Date: 2026-06-26 16:00:11.117911
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "74d113f81164"
-down_revision: Union[str, Sequence[str], None] = "cba6c624a835"
+down_revision: Union[str, Sequence[str], None] = "7cc6b1814833"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -40,7 +40,9 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["player_id"], ["players.player_id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["player_id"], ["players.player_id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("player_id"),
     )
     # ### end Alembic commands ###
