@@ -4,9 +4,12 @@ import httpx
 import uvicorn
 from loguru import logger
 from fastapi import FastAPI, Request
+from fastapi_cache import FastAPICache
 from fastapi.responses import JSONResponse
+from fastapi_cache.backends.redis import RedisBackend
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.middleware import SlowAPIMiddleware
+from redis import asyncio as aioredis
 
 from app.core.settings import db_helper
 from app.api import router as api_router
@@ -16,13 +19,13 @@ from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.logger import setup_logging
 
+redis_client: aioredis.Redis | None = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global redis_client
     setup_logging()
-
-    from loguru import logger
-
     logger.info("Starting up FaceitCompetitiveRatingService...")
 
     try:
@@ -35,27 +38,51 @@ async def lifespan(app: FastAPI):
         )
         raise
 
-    limits = httpx.Limits(max_keepalive_connections=20, max_connections=100)
-    app.state.httpx_client = httpx.AsyncClient(
-        base_url=settings.faceit.base_url,
-        headers={"Authorization": f"Bearer {settings.faceit.api_key}"},
-        limits=limits,
-        timeout=httpx.Timeout(10.0),
-    )
+    try:
+        redis_client = aioredis.from_url(
+            settings.redis.url,
+            encoding="utf8",
+            decode_responses=True,
+        )
+        FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
+        logger.info("Redis client initialized successfully.")
+    except Exception as e:
+        logger.critical(
+            "Infrastructure check failed. Redis is unreachable: {error}",
+            error=e,
+        )
+        raise
 
-    logger.info(
-        "HTTPX client initialized | base_url={base_url} | pool_size={pool_size}",
-        base_url=settings.faceit.base_url,
-        pool_size=limits.max_connections,
-    )
+    try:
+        limits = httpx.Limits(max_keepalive_connections=20, max_connections=100)
+        app.state.httpx_client = httpx.AsyncClient(
+            base_url=settings.faceit.base_url,
+            headers={"Authorization": f"Bearer {settings.faceit.api_key}"},
+            limits=limits,
+            timeout=httpx.Timeout(10.0),
+        )
+        logger.info(
+            "HTTPX client initialized | base_url={base_url} | pool_size={pool_size}",
+            base_url=settings.faceit.base_url,
+            pool_size=limits.max_connections,
+        )
+    except Exception as e:
+        logger.critical(
+            "Infrastructure check failed. HTTPX client initialization failed: {error}",
+            error=e,
+        )
+        raise
 
     yield
 
-    await app.state.httpx_client.aclose()
-    logger.info("HTTPX client closed. Shutdown complete.")
-
     await db_helper.engine.dispose()
     logger.info("Database pool disposed. Shutdown complete.")
+
+    await redis_client.close()
+    logger.info("Redis client closed. Shutdown complete.")
+
+    await app.state.httpx_client.aclose()
+    logger.info("HTTPX client closed. Shutdown complete.")
 
 
 app = FastAPI(

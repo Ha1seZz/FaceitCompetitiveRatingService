@@ -40,6 +40,18 @@ class DbSettings(BaseModel):
         return f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
 
 
+class RedisSettings(BaseModel):
+    """Настройки подключения к Redis."""
+
+    host: str = "localhost"
+    port: int = 6379
+
+    @property
+    def url(self) -> str:
+        """DSN строка для подключения asyncio-клиента Redis."""
+        return f"redis://{self.host}:{self.port}"
+
+
 class FaceitSettings(BaseModel):
     """Конфигурация для авторизации и запросов к Faceit Data API."""
 
@@ -120,6 +132,7 @@ class Settings(BaseSettings):
     )
     api: ApiPrefix = ApiPrefix()
     db: DbSettings = DbSettings()
+    redis: RedisSettings = RedisSettings()
     faceit: FaceitSettings
     player: PlayerSettings = PlayerSettings()
     player_stats: PlayerStatsSettings = PlayerStatsSettings()

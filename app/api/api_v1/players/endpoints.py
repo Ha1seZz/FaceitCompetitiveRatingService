@@ -1,6 +1,7 @@
 """HTTP-эндпоинты игроков: список/профиль/карты/анализ/удаление."""
 
 from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi_cache.decorator import cache
 
 from app.application import (
     MapsStatsService,
@@ -34,6 +35,7 @@ router = APIRouter(
 
 @router.get("/", response_model=list[PlayerPublic])
 @limiter.limit(settings.rate_limit.default)
+@cache(expire=30)
 async def get_players(
     request: Request,
     limit: int = Query(10, ge=1, le=100),
@@ -46,6 +48,7 @@ async def get_players(
 
 @router.get("/{nickname}", response_model=PlayerProfileDetails)
 @limiter.limit(settings.rate_limit.expensive)
+@cache(expire=60)
 async def get_player_profile(
     request: Request,
     nickname: str,
@@ -57,6 +60,7 @@ async def get_player_profile(
 
 @router.get("/{nickname}/rating", response_model=PlayerCSRating)
 @limiter.limit(settings.rate_limit.expensive)
+@cache(expire=60)
 async def get_player_rating(
     request: Request,
     nickname: str,
@@ -68,6 +72,7 @@ async def get_player_rating(
 
 @router.get("/{nickname}/stats", response_model=PlayerStatsInsight)
 @limiter.limit(settings.rate_limit.expensive)
+@cache(expire=120)
 async def get_player_stats(
     request: Request,
     nickname: str,
@@ -81,6 +86,7 @@ async def get_player_stats(
 
 @router.get("/{nickname}/maps", response_model=list[MapStatsResponse])
 @limiter.limit(settings.rate_limit.expensive)
+@cache(expire=300)
 async def get_player_maps_stats(
     request: Request,
     nickname: str,
@@ -94,6 +100,7 @@ async def get_player_maps_stats(
 
 @router.get("/{nickname}/insights/maps", response_model=MapsInsight)
 @limiter.limit(settings.rate_limit.expensive)
+@cache(expire=300)
 async def get_maps_insight(
     request: Request,
     nickname: str,
@@ -107,6 +114,7 @@ async def get_maps_insight(
 
 @router.get("/{nickname}/insights/schedule", response_model=WhenToPlayInsight)
 @limiter.limit(settings.rate_limit.expensive)
+@cache(expire=300)
 async def get_schedule_insight(
     request: Request,
     nickname: str,

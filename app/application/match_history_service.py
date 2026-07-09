@@ -5,9 +5,10 @@ from datetime import datetime, timezone
 from loguru import logger
 from fastapi import BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
+from redis.asyncio import Redis
 
-from app.core.config import settings
 from app.core.settings import db_helper
+from app.core.config import settings
 from app.domain.time_analysis.analysis import build_time_snapshot
 from app.infrastructure.db.repositories import MatchHistoryRepository, PlayerRepository
 from app.infrastructure.faceit.client import FaceitClient
@@ -17,8 +18,6 @@ from app.schemas import MatchHistoryRow
 class MatchHistoryService:
     """Application-сервис: загрузка/кэширование истории матчей игрока для аналитики."""
 
-    _updating_players: set[str] = set()
-
     def __init__(
         self,
         match_history_repo: MatchHistoryRepository,
@@ -26,12 +25,14 @@ class MatchHistoryService:
         faceit_client: FaceitClient,
         session: AsyncSession,
         bg_tasks: BackgroundTasks,
+        redis: Redis,
     ):
         self.match_history_repo = match_history_repo
         self.player_repo = player_repo
         self.faceit_client = faceit_client
         self.session = session
         self.bg_tasks = bg_tasks
+        self.redis = redis
 
     async def get_or_fetch_match_history(
         self,
@@ -47,17 +48,23 @@ class MatchHistoryService:
             limit=limit,
         )
 
+        lock_key = f"lock:match_history:{player_id}"
+
         if cached_rows:  # Если кэш есть
             if not self._is_cache_stale(updated_at):  # Если кэш свежий
                 return cached_rows
 
             # Если кэш есть, но протух (Stale-While-Revalidate)
-            elif player_id not in self.__class__._updating_players:
-                self.__class__._updating_players.add(player_id)
+            is_locked = await self.redis.set(
+                lock_key, "1", nx=True, ex=600
+            )  # TTL 10 минут, парсинг долгий
+            if is_locked:
                 self.bg_tasks.add_task(
                     self._refresh_match_history_bg,
-                    player_id,
-                    limit,
+                    player_id=player_id,
+                    limit=limit,
+                    start_offset=0,
+                    lock_key=lock_key,
                 )
             return cached_rows  # Отдаем старые данные мгновенно
 
@@ -66,13 +73,14 @@ class MatchHistoryService:
         await self._refresh_match_history_sync(player_id, fast_limit)
 
         if limit > fast_limit:
-            if player_id not in self.__class__._updating_players:
-                self.__class__._updating_players.add(player_id)
+            is_locked = await self.redis.set(lock_key, "1", nx=True, ex=600)
+            if is_locked:
                 self.bg_tasks.add_task(
                     self._refresh_match_history_bg,
-                    player_id,
-                    limit,
+                    player_id=player_id,
+                    limit=limit,
                     start_offset=fast_limit,
+                    lock_key=lock_key,
                 )
 
         return await self.match_history_repo.get_last(player_id=player_id, limit=limit)
@@ -92,7 +100,8 @@ class MatchHistoryService:
         self,
         player_id: str,
         limit: int,
-        start_offset: int = 0,
+        start_offset: int,
+        lock_key: str,
     ) -> None:
         """Автономная фоновая задача. Создает свою собственную изолированную сессию."""
 
@@ -102,15 +111,15 @@ class MatchHistoryService:
 
             try:
                 raw_matches = await self.faceit_client.get_player_match_history(
-                    player_id,
+                    player_id=player_id,
                     max_matches=limit,
                     start_offset=start_offset,
                 )
                 rows = self._parse_raw_matches_static(raw_matches, player_id)
                 await bg_match_repo.add_new_matches(player_id=player_id, rows=rows)
                 await bg_player_repo.set_match_history_updated_at(
-                    player_id,
-                    datetime.now(timezone.utc),
+                    player_id=player_id,
+                    updated_at=datetime.now(timezone.utc),
                 )
 
                 await session.commit()
@@ -118,7 +127,6 @@ class MatchHistoryService:
                     "Фоновое обновление успешно завершено для {player_id}",
                     player_id=player_id,
                 )
-
             except Exception as e:
                 await session.rollback()
                 logger.error(
@@ -126,9 +134,8 @@ class MatchHistoryService:
                     player_id=player_id,
                     e=e,
                 )
-
             finally:
-                self.__class__._updating_players.discard(player_id)
+                await self.redis.delete(lock_key)
 
     @staticmethod
     def _parse_raw_matches_static(

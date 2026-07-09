@@ -5,19 +5,18 @@ from datetime import datetime, timezone
 from loguru import logger
 from fastapi import BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
+from redis.asyncio import Redis
 
 from app.core.settings import db_helper
 from app.core.config import settings
 from app.domain.player.models import PlayerDomainModel
 from app.infrastructure.db.repositories import PlayerRepository
 from app.infrastructure.faceit.client import FaceitClient
-from app.schemas.players import PlayerCreate
+from app.schemas import PlayerCreate
 
 
 class PlayerService:
     """Application-сервис для обработки операций с игроками."""
-
-    _updating_profiles: set[str] = set()
 
     def __init__(
         self,
@@ -25,11 +24,13 @@ class PlayerService:
         player_repo: PlayerRepository,
         faceit_client: FaceitClient,
         bg_tasks: BackgroundTasks,
+        redis: Redis,
     ):
         self.session = session
         self.player_repo = player_repo
         self.faceit_client = faceit_client
         self.bg_tasks = bg_tasks
+        self.redis = redis
 
     async def create_or_update_from_faceit(
         self,
@@ -51,9 +52,14 @@ class PlayerService:
                 return player
 
             # Если кэш есть, но протух (Stale-While-Revalidate)
-            elif nickname not in self.__class__._updating_profiles:
-                self.__class__._updating_profiles.add(nickname)
-                self.bg_tasks.add_task(self._refresh_player_bg, nickname)
+            lock_key = f"lock:player_update:{nickname.lower()}"
+            is_locked = await self.redis.set(lock_key, "1", nx=True, ex=300)
+            if is_locked:
+                self.bg_tasks.add_task(self._refresh_player_bg, nickname, lock_key)
+            else:
+                logger.debug(
+                    f"Обновление {nickname} уже идет в другом процессе. Пропускаем."
+                )
 
             return player  # Отдаем старые данные мгновенно
 
@@ -61,9 +67,8 @@ class PlayerService:
         raw_player_data = await self.faceit_client.get_player(nickname)
         return await self.create_or_update_from_faceit(player_data=raw_player_data)
 
-    async def _refresh_player_bg(self, nickname: str) -> None:
+    async def _refresh_player_bg(self, nickname: str, lock_key: str) -> None:
         """Фоновое обновление профиля игрока (изолировано от HTTP-запроса)."""
-
         async with db_helper.session_factory() as session:
             bg_repo = PlayerRepository(session)
 
@@ -85,7 +90,7 @@ class PlayerService:
                     e=e,
                 )
             finally:
-                self.__class__._updating_profiles.discard(nickname)
+                await self.redis.delete(lock_key)
 
     async def get_players(self, limit: int, offset: int) -> list[PlayerDomainModel]:
         """Получает список всех игроков."""

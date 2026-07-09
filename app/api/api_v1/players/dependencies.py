@@ -2,6 +2,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import BackgroundTasks, Depends
+from redis.asyncio import Redis
 
 from app.application import (
     MapsStatsService,
@@ -19,6 +20,7 @@ from app.infrastructure.db.repositories import (
 from app.infrastructure.faceit.dependencies import get_faceit_client
 from app.infrastructure.faceit.client import FaceitClient
 from app.core.settings import db_helper
+from app.core.redis import get_redis_client
 
 
 async def get_player_repository(
@@ -42,11 +44,14 @@ async def get_player_service(
     faceit_client: FaceitClient = Depends(get_faceit_client),
 ) -> PlayerService:
     """Создает экземпляр сервиса обработки логики игроков."""
+    redis_client: Redis = get_redis_client()
+
     return PlayerService(
         session=session,
         player_repo=player_repo,
         faceit_client=faceit_client,
         bg_tasks=background_tasks,
+        redis=redis_client,
     )
 
 
@@ -100,12 +105,15 @@ async def get_match_history_service(
     session: AsyncSession = Depends(db_helper.session_dependency),
 ) -> MatchHistoryService:
     """Dependency-фабрика для сервиса кэширования истории матчей игрока."""
+    redis_client: Redis = get_redis_client()
+
     return MatchHistoryService(
         match_history_repo=match_history_repo,
         player_repo=player_repo,
         faceit_client=faceit_client,
         session=session,
         bg_tasks=background_tasks,
+        redis=redis_client,
     )
 
 
