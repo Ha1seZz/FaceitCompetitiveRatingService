@@ -114,7 +114,6 @@ async def get_maps_insight(
 
 @router.get("/{nickname}/insights/schedule", response_model=WhenToPlayInsight)
 @limiter.limit(settings.rate_limit.expensive)
-@cache(expire=300)
 async def get_schedule_insight(
     request: Request,
     nickname: str,
