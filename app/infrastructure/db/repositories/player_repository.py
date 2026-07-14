@@ -38,9 +38,19 @@ class PlayerRepository:
             match_history_updated_at=player_orm.match_history_updated_at,
         )
 
-    async def get_all(self, limit: int, offset: int) -> list[PlayerDomainModel]:
-        """Возвращает список игроков с поддержкой пагинации."""
-        stmt = select(Player).offset(offset).limit(limit)
+    async def get_all(
+        self,
+        limit: int,
+        cursor: str | None = None,
+    ) -> list[PlayerDomainModel]:
+        """Получает список игроков с использованием Keyset Pagination."""
+        stmt = select(Player).order_by(Player.player_id)
+
+        if cursor:
+            stmt = stmt.where(Player.player_id > cursor)
+
+        stmt = stmt.limit(limit)
+
         result = await self.session.execute(stmt)
         return [self._map_to_domain(p) for p in result.scalars().all()]
 

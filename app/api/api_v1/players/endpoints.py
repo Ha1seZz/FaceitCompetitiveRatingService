@@ -39,11 +39,14 @@ router = APIRouter(
 async def get_players(
     request: Request,
     limit: int = Query(10, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    cursor: str | None = Query(
+        None,
+        description="ID последнего игрока на текущей странице.",
+    ),
     player_service: PlayerService = Depends(get_player_service),
 ):
     """Получить всех игроков из локальной базы данных."""
-    return await player_service.get_players(limit=limit, offset=offset)
+    return await player_service.get_players(limit=limit, cursor=cursor)
 
 
 @router.get("/{nickname}", response_model=PlayerProfileDetails)

@@ -92,9 +92,13 @@ class PlayerService:
             finally:
                 await self.redis.delete(lock_key)
 
-    async def get_players(self, limit: int, offset: int) -> list[PlayerDomainModel]:
+    async def get_players(
+        self,
+        limit: int,
+        cursor: str | None = None,
+    ) -> list[PlayerDomainModel]:
         """Получает список всех игроков."""
-        return await self.player_repo.get_all(limit=limit, offset=offset)
+        return await self.player_repo.get_all(limit=limit, cursor=cursor)
 
     async def delete_player_by_nickname(self, nickname: str) -> None:
         """Удаляет игрока или выбрасывает доменную ошибку, если игрок не найден."""
