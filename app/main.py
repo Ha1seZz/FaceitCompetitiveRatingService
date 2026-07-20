@@ -11,20 +11,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi.middleware import SlowAPIMiddleware
 from redis import asyncio as aioredis
 
-from app.core.settings import db_helper
 from app.api import router as api_router
 from app.api.exception_handlers import setup_exception_handlers
 from app.api.middleware import ASGIRequestLoggerMiddleware
+from app.core.settings import db_helper
+from app.core.arq_pool import create_arq_pool
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.logger import setup_logging
 
-redis_client: aioredis.Redis | None = None
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global redis_client
     setup_logging()
     logger.info("Starting up FaceitCompetitiveRatingService...")
 
@@ -44,6 +42,7 @@ async def lifespan(app: FastAPI):
             encoding="utf8",
             decode_responses=False,
         )
+        app.state.redis = redis_client
         FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
         logger.info("Redis client initialized successfully.")
     except Exception as e:
@@ -54,12 +53,24 @@ async def lifespan(app: FastAPI):
         raise
 
     try:
+        arq_pool = await create_arq_pool()
+        app.state.arq_pool = arq_pool
+        logger.info("ARQ pool initialized successfully.")
+    except Exception as e:
+        logger.critical(
+            "ARQ pool initialization failed: {error}",
+            error=e,
+        )
+        raise
+
+    try:
         limits = httpx.Limits(max_keepalive_connections=20, max_connections=100)
         app.state.httpx_client = httpx.AsyncClient(
             base_url=settings.faceit.base_url,
             headers={"Authorization": f"Bearer {settings.faceit.api_key}"},
             limits=limits,
-            timeout=httpx.Timeout(10.0),
+            timeout=httpx.Timeout(10.0, connect=5.0),
+            follow_redirects=True,
         )
         logger.info(
             "HTTPX client initialized | base_url={base_url} | pool_size={pool_size}",
@@ -75,14 +86,17 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    await db_helper.engine.dispose()
-    logger.info("Database pool disposed. Shutdown complete.")
+    await app.state.httpx_client.aclose()
+    logger.info("HTTPX client closed. Shutdown complete.")
+
+    await app.state.arq_pool.close()
+    logger.info("ARQ pool closed. Shutdown complete.")
 
     await redis_client.close()
     logger.info("Redis client closed. Shutdown complete.")
 
-    await app.state.httpx_client.aclose()
-    logger.info("HTTPX client closed. Shutdown complete.")
+    await db_helper.engine.dispose()
+    logger.info("Database pool disposed. Shutdown complete.")
 
 
 app = FastAPI(

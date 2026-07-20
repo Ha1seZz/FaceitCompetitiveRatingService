@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 
+from arq import ArqRedis
 from loguru import logger
 from fastapi import BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,14 +24,16 @@ class PlayerService:
         session: AsyncSession,
         player_repo: PlayerRepository,
         faceit_client: FaceitClient,
-        bg_tasks: BackgroundTasks,
         redis: Redis,
+        arq_pool: ArqRedis | None = None,
+        bg_tasks: BackgroundTasks | None = None,
     ):
         self.session = session
         self.player_repo = player_repo
         self.faceit_client = faceit_client
-        self.bg_tasks = bg_tasks
         self.redis = redis
+        self.arq_pool = arq_pool
+        self.bg_tasks = bg_tasks
 
     async def create_or_update_from_faceit(
         self,
@@ -47,23 +50,26 @@ class PlayerService:
         """Возвращает профиль. Если его нет/устарел - обновляет в фоне."""
         player = await self.player_repo.get_by_nickname(nickname)
 
-        if player:  # Если игрок есть в базе
-            if not self._is_cache_stale(player.updated_at):  # Если кэш свежий
+        if player:
+            if not self._is_cache_stale(player.updated_at):
                 return player
 
-            # Если кэш есть, но протух (Stale-While-Revalidate)
             lock_key = f"lock:player_update:{nickname.lower()}"
             is_locked = await self.redis.set(lock_key, "1", nx=True, ex=300)
-            if is_locked:
-                self.bg_tasks.add_task(self._refresh_player_bg, nickname, lock_key)
+            if is_locked and self.arq_pool:
+                await self.arq_pool.enqueue_job(
+                    "task_refresh_player",
+                    nickname,
+                    lock_key,
+                )
             else:
                 logger.debug(
-                    f"Обновление {nickname} уже идет в другом процессе. Пропускаем."
+                    "Обновление {nickname} уже идет или ARQ недоступен. Пропускаем.",
+                    nickname=nickname,
                 )
+            return player
 
-            return player  # Отдаем старые данные мгновенно
-
-        # Если игрока вообще нет — жесткий синк
+        # Если кэша вообще нет — жесткий синк
         raw_player_data = await self.faceit_client.get_player(nickname)
         return await self.create_or_update_from_faceit(player_data=raw_player_data)
 

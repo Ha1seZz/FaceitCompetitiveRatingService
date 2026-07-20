@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 
+from arq import ArqRedis
 from loguru import logger
 from fastapi import BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,15 +25,17 @@ class MatchHistoryService:
         player_repo: PlayerRepository,
         faceit_client: FaceitClient,
         session: AsyncSession,
-        bg_tasks: BackgroundTasks,
         redis: Redis,
+        arq_pool: ArqRedis | None = None,
+        bg_tasks: BackgroundTasks | None = None,
     ):
         self.match_history_repo = match_history_repo
         self.player_repo = player_repo
         self.faceit_client = faceit_client
         self.session = session
-        self.bg_tasks = bg_tasks
         self.redis = redis
+        self.arq_pool = arq_pool
+        self.bg_tasks = bg_tasks
 
     async def get_or_fetch_match_history(
         self,
@@ -50,33 +53,27 @@ class MatchHistoryService:
 
         lock_key = f"lock:match_history:{player_id}"
 
-        if cached_rows:  # Если кэш есть
-            if not self._is_cache_stale(updated_at):  # Если кэш свежий
+        if cached_rows:
+            if not self._is_cache_stale(updated_at):
                 return cached_rows
 
-            # Если кэш есть, но протух (Stale-While-Revalidate)
-            is_locked = await self.redis.set(
-                lock_key, "1", nx=True, ex=600
-            )  # TTL 10 минут, парсинг долгий
+            is_locked = await self.redis.set(lock_key, "1", nx=True, ex=600)
             if is_locked:
-                self.bg_tasks.add_task(
-                    self._refresh_match_history_bg,
+                await self._enqueue_refresh(
                     player_id=player_id,
                     limit=limit,
                     start_offset=0,
                     lock_key=lock_key,
                 )
-            return cached_rows  # Отдаем старые данные мгновенно
+            return cached_rows
 
-        # Если кэша вообще нет — жесткий синк
-        fast_limit = 100
+        fast_limit = 100  # Если кэша вообще нет — жесткий синк
         await self._refresh_match_history_sync(player_id, fast_limit)
 
         if limit > fast_limit:
             is_locked = await self.redis.set(lock_key, "1", nx=True, ex=600)
             if is_locked:
-                self.bg_tasks.add_task(
-                    self._refresh_match_history_bg,
+                await self._enqueue_refresh(
                     player_id=player_id,
                     limit=limit,
                     start_offset=fast_limit,
@@ -84,6 +81,36 @@ class MatchHistoryService:
                 )
 
         return await self.match_history_repo.get_last(player_id=player_id, limit=limit)
+
+    async def _enqueue_refresh(
+        self,
+        player_id: str,
+        limit: int,
+        start_offset: int,
+        lock_key: str,
+    ) -> None:
+        """Ставит задачу обновления в ARQ или BackgroundTasks."""
+        if self.arq_pool is not None:
+            await self.arq_pool.enqueue_job(
+                "task_refresh_match_history",
+                player_id,
+                limit,
+                start_offset,
+                lock_key,
+            )
+        elif self.bg_tasks is not None:
+            self.bg_tasks.add_task(
+                self._refresh_match_history_bg,
+                player_id=player_id,
+                limit=limit,
+                start_offset=start_offset,
+                lock_key=lock_key,
+            )
+        else:
+            logger.warning(
+                "Нет ни arq_pool ни bg_tasks — пропускаем фоновое обновление для {player_id}",
+                player_id=player_id,
+            )
 
     async def _refresh_match_history_sync(self, player_id: str, limit: int) -> None:
         """Синхронное обновление кэша (для новых игроков)."""

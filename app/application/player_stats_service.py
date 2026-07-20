@@ -1,12 +1,16 @@
+"""Сервис для управления статистикой игрока."""
+
 from datetime import datetime, timezone
+
+from arq import ArqRedis
 from loguru import logger
 from fastapi import BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
+from redis.asyncio import Redis
 
-from app.core.config import settings
 from app.core.settings import db_helper
+from app.core.config import settings
 from app.domain.player.models import PlayerStatsDomainModel
-
 from app.infrastructure.db.repositories import PlayerStatsRepository
 from app.infrastructure.faceit.client import FaceitClient
 
@@ -14,18 +18,20 @@ from app.infrastructure.faceit.client import FaceitClient
 class PlayerStatsService:
     """Сервис для управления статистикой игрока."""
 
-    _updating_players: set[str] = set()
-
     def __init__(
         self,
         stats_repo: PlayerStatsRepository,
         faceit_client: FaceitClient,
         session: AsyncSession,
-        bg_tasks: BackgroundTasks,
+        redis: Redis,
+        arq_pool: ArqRedis | None = None,
+        bg_tasks: BackgroundTasks | None = None,
     ):
         self.stats_repo = stats_repo
         self.faceit_client = faceit_client
         self.session = session
+        self.redis = redis
+        self.arq_pool = arq_pool
         self.bg_tasks = bg_tasks
 
     async def get_or_fetch_player_stats(
@@ -36,15 +42,19 @@ class PlayerStatsService:
 
         cached_stats = await self.stats_repo.get_by_player_id(player_id)
 
-        # Если кэш свежий - сразу отдаем его
         if cached_stats and not self._is_cache_stale(cached_stats.updated_at):
             return cached_stats
 
-        # Если кэш есть, но протух (Stale-While-Revalidate)
         if cached_stats:
-            if player_id not in self._updating_players:
-                self._updating_players.add(player_id)
-                self.bg_tasks.add_task(self._refresh_stats_bg, player_id)
+            lock_key = f"lock:player_stats:{player_id}"
+            is_locked = await self.redis.set(lock_key, "1", nx=True, ex=300)
+
+            if is_locked and self.arq_pool:
+                await self.arq_pool.enqueue_job(
+                    "task_refresh_stats",
+                    player_id,
+                    lock_key,
+                )
             return cached_stats
 
         # Если кэша вообще нет — жесткий синк
@@ -62,7 +72,7 @@ class PlayerStatsService:
         await self.session.commit()
         return stats_domain
 
-    async def _refresh_stats_bg(self, player_id: str) -> None:
+    async def _refresh_stats_bg(self, player_id: str, lock_key: str) -> None:
         """Изолированное фоновое обновление."""
         async with db_helper.session_factory() as session:
             bg_repo = PlayerStatsRepository(session)
@@ -76,18 +86,18 @@ class PlayerStatsService:
                 await bg_repo.save_stats(player_id=player_id, stats=stats_domain)
                 await session.commit()
                 logger.info(
-                    "Фоновое обновление статистики успешно: {player_id}",
+                    "Фоновое обновление статистики успешно завершено для {player_id}",
                     player_id=player_id,
                 )
             except Exception as e:
                 await session.rollback()
                 logger.error(
-                    "Ошибка обновления статы {player_id}: {e}",
+                    "Ошибка обновления статистики для {player_id}: {e}",
                     player_id=player_id,
                     e=e,
                 )
             finally:
-                self._updating_players.discard(player_id)
+                await self.redis.delete(lock_key)
 
     def _map_to_domain(self, raw_data: dict, player_id: str) -> PlayerStatsDomainModel:
         """Трансформация внешнего API в Domain Model."""
