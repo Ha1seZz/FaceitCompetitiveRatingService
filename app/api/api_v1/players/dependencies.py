@@ -1,9 +1,8 @@
 """Зависимости модуля игроков."""
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import BackgroundTasks, Depends, Request
+from fastapi import Depends, Request
 from arq.connections import ArqRedis
-from redis.asyncio import Redis
 
 from app.application import (
     MapsStatsService,
@@ -24,6 +23,11 @@ from app.core.settings import db_helper
 from app.core.redis import get_redis_client
 
 
+def get_arq_pool(request: Request) -> ArqRedis:
+    """Возвращает пул ARQ из app.state для отправки задач в очередь."""
+    return request.app.state.arq_pool
+
+
 async def get_player_repository(
     session: AsyncSession = Depends(db_helper.session_dependency),
 ) -> PlayerRepository:
@@ -39,10 +43,10 @@ async def get_player_stats_repository(
 
 
 async def get_player_service(
-    request: Request,
     session: AsyncSession = Depends(db_helper.session_dependency),
     player_repo: PlayerRepository = Depends(get_player_repository),
     faceit_client: FaceitClient = Depends(get_faceit_client),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
 ) -> PlayerService:
     """Создает экземпляр сервиса обработки игроков."""
     return PlayerService(
@@ -50,15 +54,15 @@ async def get_player_service(
         player_repo=player_repo,
         faceit_client=faceit_client,
         redis=get_redis_client(),
-        arq_pool=request.app.state.arq_pool,
+        arq_pool=arq_pool,
     )
 
 
 async def get_player_stats_service(
-    request: Request,
     session: AsyncSession = Depends(db_helper.session_dependency),
     stats_repo: PlayerStatsRepository = Depends(get_player_stats_repository),
     faceit_client: FaceitClient = Depends(get_faceit_client),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
 ) -> PlayerStatsService:
     """Создает экземпляр сервиса обработки статистики игроков."""
     return PlayerStatsService(
@@ -66,7 +70,7 @@ async def get_player_stats_service(
         stats_repo=stats_repo,
         faceit_client=faceit_client,
         redis=get_redis_client(),
-        arq_pool=request.app.state.arq_pool,
+        arq_pool=arq_pool,
     )
 
 
@@ -98,11 +102,11 @@ async def get_match_history_repository(
 
 
 async def get_match_history_service(
-    request: Request,
     match_history_repo: MatchHistoryRepository = Depends(get_match_history_repository),
     player_repo: PlayerRepository = Depends(get_player_repository),
     faceit_client: FaceitClient = Depends(get_faceit_client),
     session: AsyncSession = Depends(db_helper.session_dependency),
+    arq_pool: ArqRedis = Depends(get_arq_pool),
 ) -> MatchHistoryService:
     """Создает экземпляр сервиса обработки истории матчей игрока."""
     return MatchHistoryService(
@@ -111,7 +115,7 @@ async def get_match_history_service(
         faceit_client=faceit_client,
         session=session,
         redis=get_redis_client(),
-        arq_pool=request.app.state.arq_pool,
+        arq_pool=arq_pool,
     )
 
 
@@ -124,8 +128,3 @@ async def get_time_analysis_service(
         player_service=player_service,
         match_history_service=match_history_service,
     )
-
-
-def get_arq_pool(request: Request) -> ArqRedis:
-    """Возвращает пул ARQ из app.state для отправки задач в очередь."""
-    return request.app.state.arq_pool
