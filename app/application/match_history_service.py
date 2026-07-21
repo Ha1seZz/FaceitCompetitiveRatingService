@@ -4,12 +4,12 @@ from datetime import datetime, timezone
 
 from arq import ArqRedis
 from loguru import logger
-from fastapi import BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from redis.asyncio import Redis
 
 from app.core.settings import db_helper
 from app.core.config import settings
+from app.core.exceptions import QueueServiceUnavailableError
 from app.domain.time_analysis.analysis import build_time_snapshot
 from app.infrastructure.db.repositories import MatchHistoryRepository, PlayerRepository
 from app.infrastructure.faceit.client import FaceitClient
@@ -27,7 +27,6 @@ class MatchHistoryService:
         session: AsyncSession,
         redis: Redis,
         arq_pool: ArqRedis | None = None,
-        bg_tasks: BackgroundTasks | None = None,
     ):
         self.match_history_repo = match_history_repo
         self.player_repo = player_repo
@@ -35,7 +34,6 @@ class MatchHistoryService:
         self.session = session
         self.redis = redis
         self.arq_pool = arq_pool
-        self.bg_tasks = bg_tasks
 
     async def get_or_fetch_match_history(
         self,
@@ -51,12 +49,11 @@ class MatchHistoryService:
             limit=limit,
         )
 
-        lock_key = f"lock:match_history:{player_id}"
-
         if cached_rows:
             if not self._is_cache_stale(updated_at):
                 return cached_rows
 
+            lock_key = f"lock:match_history:{player_id}"
             is_locked = await self.redis.set(lock_key, "1", nx=True, ex=600)
             if is_locked:
                 await self._enqueue_refresh(
@@ -89,28 +86,43 @@ class MatchHistoryService:
         start_offset: int,
         lock_key: str,
     ) -> None:
-        """Ставит задачу обновления в ARQ или BackgroundTasks."""
-        if self.arq_pool is not None:
+        """
+        Отправляет задачу фонового обновления в очередь ARQ.
+
+        Выбрасывает QueueServiceUnavailableError, если пул не инициализирован
+        или брокер сообщений недоступен, предотвращая тихие отказы.
+        """
+        if not self.arq_pool:
+            logger.critical(
+                "ARQ Redis pool не инициализирован! Фоновая задача для {player_id} не может быть создана.",
+                player_id=player_id,
+            )
+            raise QueueServiceUnavailableError(
+                "Сервис фоновых задач не инициализирован"
+            )
+
+        try:
             await self.arq_pool.enqueue_job(
                 "task_refresh_match_history",
-                player_id,
-                limit,
-                start_offset,
-                lock_key,
-            )
-        elif self.bg_tasks is not None:
-            self.bg_tasks.add_task(
-                self._refresh_match_history_bg,
                 player_id=player_id,
                 limit=limit,
                 start_offset=start_offset,
                 lock_key=lock_key,
             )
-        else:
-            logger.warning(
-                "Нет ни arq_pool ни bg_tasks — пропускаем фоновое обновление для {player_id}",
+            logger.info(
+                "Задача на обновление истории матчей игрока успешно создана для {player_id}",
                 player_id=player_id,
             )
+        except Exception as e:
+            logger.error(
+                "Сбой при отправке задачи в Redis для {player_id}: {e}",
+                player_id=player_id,
+                e=e,
+                exc_info=True,
+            )
+            raise QueueServiceUnavailableError(
+                "Не удалось отправить задачу в очередь"
+            ) from e
 
     async def _refresh_match_history_sync(self, player_id: str, limit: int) -> None:
         """Синхронное обновление кэша (для новых игроков)."""
@@ -130,7 +142,12 @@ class MatchHistoryService:
         start_offset: int,
         lock_key: str,
     ) -> None:
-        """Автономная фоновая задача. Создает свою собственную изолированную сессию."""
+        """
+        Фоновая задача обновления данных.
+
+        Выполняется воркером ARQ. Создает собственную изолированную сессию БД,
+        так как жизненный цикл задачи не привязан к HTTP-запросу.
+        """
 
         async with db_helper.session_factory() as session:
             bg_match_repo = MatchHistoryRepository(session)

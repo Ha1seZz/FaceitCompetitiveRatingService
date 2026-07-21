@@ -41,3 +41,10 @@ class PlayerNotFoundError(PlayerError):
     def __init__(self, player_id: str):
         self.player_id = player_id
         super().__init__(f"Player with ID {player_id} not found.")
+
+
+class QueueServiceUnavailableError(Exception):
+    """Вызывается, когда сервис очередей (ARQ/Redis) недоступен или не смог принять задачу."""
+
+    def __init__(self, message: str = "Фоновая очередь задач недоступна"):
+        super().__init__(message)

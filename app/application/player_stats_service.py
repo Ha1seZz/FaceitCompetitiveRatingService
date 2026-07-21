@@ -4,12 +4,12 @@ from datetime import datetime, timezone
 
 from arq import ArqRedis
 from loguru import logger
-from fastapi import BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from redis.asyncio import Redis
 
 from app.core.settings import db_helper
 from app.core.config import settings
+from app.core.exceptions import QueueServiceUnavailableError
 from app.domain.player.models import PlayerStatsDomainModel
 from app.infrastructure.db.repositories import PlayerStatsRepository
 from app.infrastructure.faceit.client import FaceitClient
@@ -25,40 +25,73 @@ class PlayerStatsService:
         session: AsyncSession,
         redis: Redis,
         arq_pool: ArqRedis | None = None,
-        bg_tasks: BackgroundTasks | None = None,
     ):
         self.stats_repo = stats_repo
         self.faceit_client = faceit_client
         self.session = session
         self.redis = redis
         self.arq_pool = arq_pool
-        self.bg_tasks = bg_tasks
 
     async def get_or_fetch_player_stats(
         self,
         player_id: str,
     ) -> PlayerStatsDomainModel:
         """Основной метод: получение статистики игрока с кэшированием."""
-
         cached_stats = await self.stats_repo.get_by_player_id(player_id)
 
-        if cached_stats and not self._is_cache_stale(cached_stats.updated_at):
-            return cached_stats
-
         if cached_stats:
+            if not self._is_cache_stale(cached_stats.updated_at):
+                return cached_stats
+
             lock_key = f"lock:player_stats:{player_id}"
             is_locked = await self.redis.set(lock_key, "1", nx=True, ex=300)
 
-            if is_locked and self.arq_pool:
-                await self.arq_pool.enqueue_job(
-                    "task_refresh_stats",
-                    player_id,
-                    lock_key,
+            if is_locked:
+                await self._enqueue_refresh(
+                    player_id=player_id,
+                    lock_key=lock_key,
                 )
             return cached_stats
 
         # Если кэша вообще нет — жесткий синк
         return await self._refresh_stats_sync(player_id)
+
+    async def _enqueue_refresh(self, player_id: str, lock_key: str) -> None:
+        """
+        Отправляет задачу фонового обновления в очередь ARQ.
+
+        Выбрасывает QueueServiceUnavailableError, если пул не инициализирован
+        или брокер сообщений недоступен, предотвращая тихие отказы.
+        """
+        if not self.arq_pool:
+            logger.critical(
+                "ARQ Redis pool не инициализирован! Фоновая задача для {player_id} не может быть создана.",
+                player_id=player_id,
+            )
+            raise QueueServiceUnavailableError(
+                "Сервис фоновых задач не инициализирован"
+            )
+
+        try:
+            await self.arq_pool.enqueue_job(
+                "task_refresh_stats",
+                player_id=player_id,
+                lock_key=lock_key,
+            )
+            logger.info(
+                "Задача на обновление статистики игрока успешно создана для {player_id}",
+                player_id=player_id,
+            )
+        except Exception as e:
+            logger.error(
+                "Сбой при отправке задачи в Redis для {player_id}: {e}",
+                player_id=player_id,
+                e=e,
+                exc_info=True,
+            )
+            raise QueueServiceUnavailableError(
+                "Не удалось отправить задачу в очередь"
+            ) from e
 
     async def _refresh_stats_sync(self, player_id: str) -> PlayerStatsDomainModel:
         """Синхронное обновление кэша (для новых игроков)."""
@@ -73,7 +106,12 @@ class PlayerStatsService:
         return stats_domain
 
     async def _refresh_stats_bg(self, player_id: str, lock_key: str) -> None:
-        """Изолированное фоновое обновление."""
+        """
+        Фоновая задача обновления данных.
+
+        Выполняется воркером ARQ. Создает собственную изолированную сессию БД,
+        так как жизненный цикл задачи не привязан к HTTP-запросу.
+        """
         async with db_helper.session_factory() as session:
             bg_repo = PlayerStatsRepository(session)
             try:

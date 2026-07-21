@@ -10,6 +10,7 @@ from app.core.exceptions import (
     ExternalServiceUnavailable,
     InsufficientDataError,
     PlayerNotFoundError,
+    QueueServiceUnavailableError,
 )
 
 
@@ -57,6 +58,17 @@ async def external_service_unavailable_handler(
     )
 
 
+async def queue_unavailable_exception_handler(
+    request: Request,
+    exc: QueueServiceUnavailableError,
+):
+    """Обработка ошибок недоступности сервиса фоновых задач (503)."""
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": str(exc)},
+    )
+
+
 def setup_exception_handlers(app: FastAPI) -> None:
     """Регистрирует все обработчики кастомных исключений в приложении."""
     app.add_exception_handler(
@@ -78,4 +90,8 @@ def setup_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         PlayerNotFoundError,
         player_not_found_handler,
+    )
+    app.add_exception_handler(
+        QueueServiceUnavailableError,
+        queue_unavailable_exception_handler,
     )

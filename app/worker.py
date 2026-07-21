@@ -1,7 +1,5 @@
 """Модуль фонового воркера ARQ для обработки тяжелых задач."""
 
-from datetime import datetime, timezone
-
 import httpx
 from loguru import logger
 from redis import asyncio as aioredis
