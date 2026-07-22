@@ -74,13 +74,12 @@ async def task_refresh_match_history(
             session=session,
             redis=ctx["redis"],
             arq_pool=None,
-            bg_tasks=None,
         )
         await match_history_service._refresh_match_history_bg(
-            player_id,
-            limit,
-            start_offset,
-            lock_key,
+            player_id=player_id,
+            limit=limit,
+            start_offset=start_offset,
+            lock_key=lock_key,
         )
     logger.info(
         "Фоновое обновление матчей для игрока {player_id} завершено.",
@@ -101,7 +100,6 @@ async def task_refresh_player(ctx, nickname: str, lock_key: str) -> None:
             faceit_client=ctx["faceit_client"],
             redis=ctx["redis"],
             arq_pool=None,
-            bg_tasks=None,
         )
         await service._refresh_player_bg(nickname, lock_key)
     logger.info(
@@ -122,10 +120,9 @@ async def task_refresh_stats(ctx, player_id: str, lock_key: str) -> None:
             faceit_client=ctx["faceit_client"],
             session=session,
             redis=ctx["redis"],
-            bg_tasks=None,
             arq_pool=None,
         )
-        await service._refresh_stats_bg(player_id, lock_key)
+        await service._refresh_stats_bg(player_id=player_id, lock_key=lock_key)
     logger.info(
         "Фоновое обновление статистики для игрока {player_id} завершено.",
         player_id=player_id,

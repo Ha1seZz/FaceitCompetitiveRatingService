@@ -48,3 +48,16 @@ class QueueServiceUnavailableError(Exception):
 
     def __init__(self, message: str = "Фоновая очередь задач недоступна"):
         super().__init__(message)
+
+
+class ResourceLockedError(Exception):
+    """
+    Исключение, выбрасываемое при попытке доступа к ресурсу,
+    который в данный момент обновляется или заблокирован другим процессом.
+    """
+
+    def __init__(
+        self,
+        message: str = "Ресурс временно заблокирован. Повторите попытку позже.",
+    ):
+        super().__init__(message)

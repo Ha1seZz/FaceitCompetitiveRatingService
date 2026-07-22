@@ -9,7 +9,7 @@ from redis.asyncio import Redis
 
 from app.core.settings import db_helper
 from app.core.config import settings
-from app.core.exceptions import QueueServiceUnavailableError
+from app.core.exceptions import QueueServiceUnavailableError, ResourceLockedError
 from app.domain.time_analysis.analysis import build_time_snapshot
 from app.infrastructure.db.repositories import MatchHistoryRepository, PlayerRepository
 from app.infrastructure.faceit.client import FaceitClient
@@ -49,11 +49,12 @@ class MatchHistoryService:
             limit=limit,
         )
 
+        lock_key = f"lock:match_history:{player_id}"
+
         if cached_rows:
             if not self._is_cache_stale(updated_at):
                 return cached_rows
 
-            lock_key = f"lock:match_history:{player_id}"
             is_locked = await self.redis.set(lock_key, "1", nx=True, ex=600)
             if is_locked:
                 await self._enqueue_refresh(
@@ -64,18 +65,34 @@ class MatchHistoryService:
                 )
             return cached_rows
 
-        fast_limit = 100  # Если кэша вообще нет — жесткий синк
-        await self._refresh_match_history_sync(player_id, fast_limit)
+        is_locked = await self.redis.set(lock_key, "1", nx=True, ex=600)
 
-        if limit > fast_limit:
-            is_locked = await self.redis.set(lock_key, "1", nx=True, ex=600)
-            if is_locked:
+        if not is_locked:
+            logger.warning(
+                "Блокировка первичной загрузки. Запрос для {player_id} отклонен.",
+                player_id=player_id,
+            )
+            raise ResourceLockedError(
+                "Идет первичная загрузка данных игрока. Повторите запрос через 5 секунд."
+            )
+
+        try:
+            fast_limit = 100  # Если кэша вообще нет — жесткий синк
+            await self._refresh_match_history_sync(player_id, fast_limit)
+
+            if limit > fast_limit:
+                await self.redis.expire(lock_key, 600)
                 await self._enqueue_refresh(
                     player_id=player_id,
                     limit=limit,
                     start_offset=fast_limit,
                     lock_key=lock_key,
                 )
+            else:
+                await self.redis.delete(lock_key)
+        except Exception as e:
+            await self.redis.delete(lock_key)
+            raise e
 
         return await self.match_history_repo.get_last(player_id=player_id, limit=limit)
 

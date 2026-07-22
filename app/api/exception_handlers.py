@@ -11,6 +11,7 @@ from app.core.exceptions import (
     InsufficientDataError,
     PlayerNotFoundError,
     QueueServiceUnavailableError,
+    ResourceLockedError,
 )
 
 
@@ -69,6 +70,16 @@ async def queue_unavailable_exception_handler(
     )
 
 
+async def resource_locked_exception_handler(
+    request: Request,
+    exc: ResourceLockedError,
+):
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={"detail": str(exc)},
+    )
+
+
 def setup_exception_handlers(app: FastAPI) -> None:
     """Регистрирует все обработчики кастомных исключений в приложении."""
     app.add_exception_handler(
@@ -94,4 +105,8 @@ def setup_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         QueueServiceUnavailableError,
         queue_unavailable_exception_handler,
+    )
+    app.add_exception_handler(
+        ResourceLockedError,
+        resource_locked_exception_handler,
     )
