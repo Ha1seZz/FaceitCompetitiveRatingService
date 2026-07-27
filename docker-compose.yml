@@ -22,6 +22,23 @@ services:
       retries: 5
       start_period: 10s
 
+  migrator:
+    build: .
+    container_name: faceit_migrator
+
+    env_file:
+      - .env
+
+    environment:
+      DB__HOST: db
+      DB__PORT: 5432
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    command: alembic upgrade head
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -60,9 +77,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
 
-    command: >
-      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --no-access-log"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --no-access-log
 
   worker:
     build:
@@ -86,6 +104,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:
