@@ -43,6 +43,11 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
 
+    command: redis-server --appendonly yes
+
+    volumes:
+      - redis_data:/data
+
     ports:
       - "${REDIS__PORT:-6379}:6379"
 
@@ -108,4 +113,5 @@ services:
         condition: service_completed_successfully
 
 volumes:
+  redis_data:
   postgres_data:
