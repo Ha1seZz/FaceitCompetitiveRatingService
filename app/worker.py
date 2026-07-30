@@ -8,26 +8,23 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.core.arq_config import redis_settings
 from app.core.config import settings
 from app.infrastructure.faceit.client import FaceitClient
-from app.infrastructure.db.repositories import (
-    PlayerRepository,
-    MatchHistoryRepository,
-    PlayerStatsRepository,
-)
-from app.application import MatchHistoryService, PlayerService, PlayerStatsService
-
-db_engine = create_async_engine(
-    settings.db.url,
-    pool_pre_ping=True,
-)
-session_factory = async_sessionmaker(
-    bind=db_engine,
-    expire_on_commit=False,
+from app.tasks import (
+    task_refresh_match_history,
+    task_refresh_player,
+    task_refresh_stats,
 )
 
 
 async def startup(ctx: dict) -> None:
     """Инициализация ресурсов при старте."""
     logger.info("Запуск ARQ воркера...")
+
+    db_engine = create_async_engine(settings.db.url, pool_pre_ping=True)
+    ctx["db_engine"] = db_engine
+
+    session_factory = async_sessionmaker(bind=db_engine, expire_on_commit=False)
+    ctx["session_factory"] = session_factory
+
     limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
     ctx["http_client"] = httpx.AsyncClient(
         base_url=settings.faceit.base_url,
@@ -36,7 +33,9 @@ async def startup(ctx: dict) -> None:
         timeout=httpx.Timeout(10.0, connect=5.0),
         follow_redirects=True,
     )
+
     ctx["faceit_client"] = FaceitClient(client=ctx["http_client"])
+
     ctx["redis"] = aioredis.from_url(
         settings.redis.url,
         encoding="utf8",
@@ -50,83 +49,8 @@ async def shutdown(ctx: dict) -> None:
     logger.info("Остановка воркера, закрытие соединений...")
     await ctx["http_client"].aclose()
     await ctx["redis"].aclose()
-    await db_engine.dispose()
+    await ctx["db_engine"].dispose()
     logger.info("Воркер успешно остановлен.")
-
-
-async def task_refresh_match_history(
-    ctx,
-    player_id: str,
-    limit: int,
-    start_offset: int,
-    lock_key: str,
-) -> None:
-    """Фоновая задача для обновления истории матчей игрока."""
-    logger.info(
-        "Начало фонового обновления матчей для игрока {player_id}",
-        player_id=player_id,
-    )
-    async with session_factory() as session:
-        match_history_service = MatchHistoryService(
-            match_history_repo=MatchHistoryRepository(session),
-            player_repo=PlayerRepository(session),
-            faceit_client=ctx["faceit_client"],
-            session=session,
-            redis=ctx["redis"],
-            arq_pool=None,
-        )
-        await match_history_service._refresh_match_history_bg(
-            player_id=player_id,
-            limit=limit,
-            start_offset=start_offset,
-            lock_key=lock_key,
-        )
-    logger.info(
-        "Фоновое обновление матчей для игрока {player_id} завершено.",
-        player_id=player_id,
-    )
-
-
-async def task_refresh_player(ctx, nickname: str, lock_key: str) -> None:
-    """Фоновая задача для обновления информации о игроке."""
-    logger.info(
-        "Начало фонового обновления информации о игроке {nickname}",
-        nickname=nickname,
-    )
-    async with session_factory() as session:
-        service = PlayerService(
-            session=session,
-            player_repo=PlayerRepository(session),
-            faceit_client=ctx["faceit_client"],
-            redis=ctx["redis"],
-            arq_pool=None,
-        )
-        await service._refresh_player_bg(nickname, lock_key)
-    logger.info(
-        "Фоновое обновление информации о игроке {nickname} завершено.",
-        nickname=nickname,
-    )
-
-
-async def task_refresh_stats(ctx, player_id: str, lock_key: str) -> None:
-    """Фоновая задача для обновления статистики игрока."""
-    logger.info(
-        "Начало фонового обновления статистики для игрока {player_id}",
-        player_id=player_id,
-    )
-    async with session_factory() as session:
-        service = PlayerStatsService(
-            stats_repo=PlayerStatsRepository(session),
-            faceit_client=ctx["faceit_client"],
-            session=session,
-            redis=ctx["redis"],
-            arq_pool=None,
-        )
-        await service._refresh_stats_bg(player_id=player_id, lock_key=lock_key)
-    logger.info(
-        "Фоновое обновление статистики для игрока {player_id} завершено.",
-        player_id=player_id,
-    )
 
 
 class WorkerSettings:

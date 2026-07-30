@@ -1,7 +1,7 @@
 """Модуль клиента для взаимодействия с Faceit Data API."""
 
-import asyncio
 import logging
+from typing import AsyncGenerator
 
 import httpx
 from loguru import logger
@@ -12,6 +12,7 @@ from tenacity import (
     retry_if_exception_type,
     before_sleep_log,
 )
+from aiolimiter import AsyncLimiter
 
 from app.core.exceptions import ExternalServiceUnavailable, FaceitEntityNotFound
 
@@ -19,18 +20,18 @@ from app.core.exceptions import ExternalServiceUnavailable, FaceitEntityNotFound
 class FaceitClient:
     """Асинхронный клиент для выполнения запросов к API Faceit."""
 
-    _global_semaphore = asyncio.Semaphore(5)
+    _rate_limiter = AsyncLimiter(max_rate=5, time_period=1)
 
     def __init__(self, client: httpx.AsyncClient):
         self.client = client
 
     @retry(
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=4, max=60),
+        stop=stop_after_attempt(5),
         retry=retry_if_exception_type((httpx.RequestError, ExternalServiceUnavailable)),
         reraise=True,
         before_sleep=before_sleep_log(logger, logging.WARNING),
-    ) 
+    )
     async def _execute_request(
         self,
         endpoint: str,
@@ -39,7 +40,7 @@ class FaceitClient:
     ) -> dict:
         """Единая точка входа для всех запросов."""
 
-        async with self._global_semaphore:
+        async with self._rate_limiter:
             response = await self.client.get(endpoint, params=params)
 
         if response.status_code == 404:
@@ -105,10 +106,9 @@ class FaceitClient:
         game: str = "cs2",
         max_matches: int = 500,
         start_offset: int = 0,
-    ) -> list[dict]:
-        """Загружает историю матчей игрока из Faceit с постраничной разбиевкой."""
+    ) -> AsyncGenerator[list[dict], None]:
+        """Загружает историю матчей игрока из Faceit."""
         limit = 100
-        all_matches: list[dict] = []
 
         for offset in range(start_offset, max_matches, limit):
             logger.debug(
@@ -125,9 +125,9 @@ class FaceitClient:
                 page = data.get("items", []) or []
             except Exception as e:
                 logger.error(
-                    "Критическая ошибка загрузки истории {player_id} на offset={offset} после всех ретраев: {e}",
-                    player_id=player_id,
+                    "Загрузка истории оборвалось на offset={offset} для {player_id}. Предыдущие пачки сохранены. Ошибка: {e}",
                     offset=offset,
+                    player_id=player_id,
                     e=e,
                 )
                 raise
@@ -135,9 +135,7 @@ class FaceitClient:
             if not page:
                 break
 
-            all_matches.extend(page)
+            yield page
 
             if len(page) < limit:
                 break
-
-        return all_matches
