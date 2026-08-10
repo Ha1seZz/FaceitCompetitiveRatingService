@@ -8,4 +8,5 @@ from app.core.config import settings
 limiter = Limiter(
     key_func=get_remote_address,
     storage_uri=settings.redis.url,
+    in_memory_fallback_enabled=True,
 )
