@@ -30,7 +30,7 @@ class DbSettings(BaseModel):
     host: str = "localhost"
     port: int = 5432
     user: str = "postgres"
-    password: str = "password"
+    password: str
     name: str = "database"
     echo: bool = False
 
@@ -130,16 +130,15 @@ class Settings(BaseSettings):
         extra="ignore",
         env_nested_delimiter="__",
     )
-    api: ApiPrefix = ApiPrefix()
-    db: DbSettings = DbSettings()
-    redis: RedisSettings = RedisSettings()
+    api: ApiPrefix
+    db: DbSettings
+    redis: RedisSettings
     faceit: FaceitSettings
-    player: PlayerSettings = PlayerSettings()
-    player_stats: PlayerStatsSettings = PlayerStatsSettings()
-    match_history: MatchHistorySettings = MatchHistorySettings()
-    rate_limit: RateLimitSettings = RateLimitSettings()
-    cors: CorsSettings = CorsSettings()
+    player: PlayerSettings
+    player_stats: PlayerStatsSettings
+    match_history: MatchHistorySettings
+    rate_limit: RateLimitSettings
+    cors: CorsSettings
 
 
-# Глобальный экземпляр настроек для использования в приложении
 settings = Settings()
