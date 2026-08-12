@@ -130,7 +130,7 @@ class Settings(BaseSettings):
         extra="ignore",
         env_nested_delimiter="__",
     )
-    api: ApiPrefix
+    api: ApiPrefix = ApiPrefix()
     db: DbSettings
     redis: RedisSettings
     faceit: FaceitSettings

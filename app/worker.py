@@ -2,6 +2,7 @@
 
 import httpx
 from loguru import logger
+from arq import create_pool
 from redis import asyncio as aioredis
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
@@ -41,6 +42,9 @@ async def startup(ctx: dict) -> None:
         encoding="utf8",
         decode_responses=False,
     )
+
+    ctx["arq_pool"] = await create_pool(redis_settings)
+
     logger.info("Ресурсы воркера успешно инициализированы.")
 
 
@@ -60,3 +64,7 @@ class WorkerSettings:
     redis_settings = redis_settings
     on_startup = startup
     on_shutdown = shutdown
+
+    max_tries = 5
+    job_timeout = 60
+    max_jobs = 10
